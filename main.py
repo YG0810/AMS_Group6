@@ -1,66 +1,19 @@
+import builtins
 import numpy as np
+from voting_methods import *
 
-
-def anti_plurality_voting(voter_preference: np.ndarray) -> dict:
-    """
-    anti-plurality voting
-
-    :param voter_preference: A numpy array of shape (m,n), where m is the number of candidates preference, and n is the number of voters.
-
-    :return: A dictionary with the candidates and their corresponding value by anti-plurality voting.
-    {
-        candidate_A: value_candidate_A,
-        candidate_B: value_candidate_B,
-        ...
-    }
-    """
-    m, n = voter_preference.shape
-    candidates = np.unique(voter_preference)
-    candidate_values = {candidate: 0 for candidate in candidates}
-
-    # Assign values to candidates
-    for preference in range(m):
-        if preference == m - 1:
-            break
-        for voter in range(n):
-            candidate_values[voter_preference[preference, voter]] += 1
-
-    return candidate_values
-
-def borda_count_voting(voter_preference: np.ndarray) -> dict:
-    """
-    Implements Borda count voting where candidates receive points based on their ranking position.
-    The candidate ranked first gets m-1 points, second gets m-2 points, etc., last gets 0 points.
-    
-    :param voter_preference: A numpy array of shape (m,n), where m is the number of preference ranks,
-                           and n is the number of voters. Each element contains the candidate name/id.
-    :return: A dictionary with candidates and their corresponding Borda scores
-    """
-    m, n = voter_preference.shape
-    candidates = np.unique(voter_preference)
-    candidate_values = {candidate: 0 for candidate in candidates}
-    
-    # For each voter, assign points based on preference rank
-    for preference_rank in range(m):
-        points = m - 1 - preference_rank  # First gets m-1 points, second m-2, etc.
-        for voter in range(n):
-            candidate_values[voter_preference[preference_rank, voter]] += points
-            
-    return candidate_values
-
-""" Example
-
-Matrix of voter preferences
-
-      Voters: 1   2   3   4
-Preference 1: B | A | C | C
-Preference 2: C | C | B | B
-Preference 3: A | B | A | A
-"""
+# get rid of `np.str_` in the print output
+oprint = builtins.print
+def cprint(*args, **kwargs):
+    oprint(*[{str(k): v for k, v in a.items()} if isinstance(a, dict) else a for a in args], **kwargs)
+builtins.print = cprint
 
 voter_preference = np.array(
-    [["B", "A", "C", "C"], ["C", "C", "B", "B"], ["A", "B", "A", "A"]]
+# voters:   1    2    3    4
+         [["B", "A", "C", "C"], # preference 1 (best)
+          ["C", "C", "B", "B"], # preference 2
+          ["A", "B", "A", "A"]] # preference 3 (worst)
 )
 
-result = anti_plurality_voting(voter_preference)
+result = two_person_voting(voter_preference)
 print(result)
