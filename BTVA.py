@@ -3,11 +3,11 @@ from numpy.char import chararray as npchar
 
 class BTVA:
 
-    def __init__(self, happiness_measure: function, risk_measure: function):
+    def __init__(self, happiness_measure: callable, risk_measure: callable):
         self.happiness_measure = happiness_measure
         self.risk_measure = risk_measure
 
-    def analyze(self, voter_preference: npchar, voting_scheme: function) -> tuple:
+    def analyze(self, voter_preference: npchar, voting_scheme: callable) -> tuple:
         """
         Analyze the voting preference of a group of voters using a specific voting scheme.
 
