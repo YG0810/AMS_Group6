@@ -9,9 +9,7 @@ voter_preference = np.char.array(
           ['A', 'B', 'A', 'A']] # 3rd preference
 )
 
-# Create BTVA (TODO: happiness and risk measures)
-btva = BTVA(happiness_measure=lambda x,y: 1, risk_measure=lambda x,y,z: 1)
-
 # Analyze the voting preferences
+btva = BTVA()
 outcome, _, _, _, _ = btva.analyze(voter_preference, plurality_voting)
 print(outcome)
