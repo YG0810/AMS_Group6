@@ -1,17 +1,24 @@
 from collections.abc import Callable
+from typing import Any
 import numpy as np
 from numpy import chararray as npchar
 from itertools import permutations
+
+VotingScheme = Callable[[npchar], dict[str, int]]
+
+# (voter_preference, outcome, weights) -> float
+HappinessMeasure = Callable[[npchar, list[str], list[float] | None], float]
+
+# (voter_preference,voting_scheme, strategic_options, weights) -> float
+RiskMeasure = Callable[[npchar, VotingScheme, list[Any]], float]
 
 
 class BTVA:
 
     def __init__(
         self,
-        happiness_measure: Callable[
-            [npchar, list[int]], float
-        ] = lambda preference, outcome: np.nan,
-        risk_measure: callable = lambda voter_preference, voting_scheme, strategic_options: np.nan,
+        happiness_measure: HappinessMeasure = lambda _, __, ___: np.nan,
+        risk_measure: RiskMeasure = lambda _, __, ___: np.nan,
     ):
         """
         Create a Basic Tactical Voting Analyst (BTVA) object.
@@ -25,7 +32,7 @@ class BTVA:
     def analyze(
         self,
         voter_preference: npchar,
-        voting_scheme: Callable[[npchar], dict[str, int]],
+        voting_scheme: VotingScheme,
     ) -> tuple[dict[str, int], list[float], float, list[set], float]:
         """
         Analyze the voting preference of a group of voters using a specific voting scheme.
@@ -51,7 +58,7 @@ class BTVA:
         # Happiness levels
         individual_happiness = [
             self.happiness_measure(
-                voter_preference[:, i], outcome.keys()  # type:ignore
+                voter_preference[:, i], list(outcome.keys())  # type:ignore
             )
             for i in range(n)
         ]
@@ -80,7 +87,7 @@ class BTVA:
 
                 # Check the modified happiness
                 mod_happiness = self.happiness_measure(
-                    option, mod_outcome.keys()  # type:ignore
+                    option, list(mod_outcome.keys())  # type:ignore
                 )
                 if (
                     mod_happiness > individual_happiness[i]
