@@ -1,6 +1,15 @@
 """ Hapiness Measurements """
 
-def get_happiness(voter_preference, voting_outcome, preference_weights: list = None, distance_weights: list = None):
+def get_happiness(voter_preference: list, voting_outcome: list, preference_weights: list = None, distance_weights: list = None):
+    """
+    Calculate the happiness of a voter given their preference and the voting outcome.
+
+    :param voter_preference: The preference of the voter.
+    :param voting_outcome: The outcome of the voting scheme.
+    :param preference_weights: The weights of the preference.
+    :param distance_weights: The weights of the distance between the preference and the outcome.
+    :return: The happiness score.
+    """
 
     # Set default weights
     if not preference_weights:
