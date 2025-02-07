@@ -1,5 +1,6 @@
 import numpy as np
 from BTVA import BTVA
+from happiness_measure import NDCG
 from voting_schemes import plurality_voting
 
 voter_preference = np.char.array(
@@ -12,6 +13,14 @@ voter_preference = np.char.array(
 )
 
 # Analyze the voting preferences
-btva = BTVA()
-outcome, _, _, _, _ = btva.analyze(voter_preference, plurality_voting)
+btva = BTVA(happiness_measure=NDCG)
+outcome, happiness, overall_happiness, _, _ = btva.analyze(
+    voter_preference, plurality_voting
+)
 print(outcome)
+print(happiness)
+
+# Sanity checking overall happiness
+assert sum(happiness) == overall_happiness
+
+print(overall_happiness)

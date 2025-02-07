@@ -13,6 +13,10 @@ HappinessMeasure = Callable[[npchar, list[str], list[float] | None], float]
 RiskMeasure = Callable[[npchar, VotingScheme, list[Any]], float]
 
 
+# (non-strategic voting outcome, voter happiness, overall happiness, voting options per voter, overall risk)
+BTVA_Output = tuple[dict[str, int], list[float], float, list[set], float]
+
+
 class BTVA:
 
     def __init__(
@@ -33,7 +37,7 @@ class BTVA:
         self,
         voter_preference: npchar,
         voting_scheme: VotingScheme,
-    ) -> tuple[dict[str, int], list[float], float, list[set], float]:
+    ) -> BTVA_Output:
         """
         Analyze the voting preference of a group of voters using a specific voting scheme.
 
