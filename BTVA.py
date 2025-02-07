@@ -1,14 +1,18 @@
+from collections.abc import Callable
 import numpy as np
-from numpy.char import chararray as npchar
+from numpy import chararray as npchar
 from itertools import permutations
+
 
 class BTVA:
 
     def __init__(
-            self,
-            happiness_measure: callable=lambda preference, outcome: np.nan,
-            risk_measure: callable=lambda voter_preference, voting_scheme, strategic_options: np.nan
-        ):
+        self,
+        happiness_measure: Callable[
+            [npchar, list[int]], float
+        ] = lambda preference, outcome: np.nan,
+        risk_measure: callable = lambda voter_preference, voting_scheme, strategic_options: np.nan,
+    ):
         """
         Create a Basic Tactical Voting Analyst (BTVA) object.
 
@@ -18,7 +22,11 @@ class BTVA:
         self.happiness_measure = happiness_measure
         self.risk_measure = risk_measure
 
-    def analyze(self, voter_preference: npchar, voting_scheme: callable) -> tuple:
+    def analyze(
+        self,
+        voter_preference: npchar,
+        voting_scheme: Callable[[npchar], dict[str, int]],
+    ) -> tuple[dict[str, int], list[float], float, list[set], float]:
         """
         Analyze the voting preference of a group of voters using a specific voting scheme.
 
@@ -34,11 +42,19 @@ class BTVA:
         m, n = voter_preference.shape
 
         # Non-strategic voting outcome
-        outcome = voting_scheme(voter_preference) # Sort the outcome by value
-        outcome = {k: v for k, v in sorted(outcome.items(), key=lambda item: item[1], reverse=True)}
+        outcome = voting_scheme(voter_preference)  # Sort the outcome by value
+        outcome = {
+            k: v
+            for k, v in sorted(outcome.items(), key=lambda item: item[1], reverse=True)
+        }
 
         # Happiness levels
-        individual_happiness = [self.happiness_measure(voter_preference[:, i], outcome.keys()) for i in range(n)]
+        individual_happiness = [
+            self.happiness_measure(
+                voter_preference[:, i], outcome.keys()  # type:ignore
+            )
+            for i in range(n)
+        ]
         overall_happiness = sum(individual_happiness)
 
         # Strategic voting options
@@ -48,18 +64,27 @@ class BTVA:
 
             # Find all possible permutations of the voter's preference
             all_options = set(permutations(voter_preference[:, i]))
-            all_options.pop() # Remove the original preference
+            all_options.pop()  # Remove the original preference
 
             for option in all_options:
                 # Check the modified outcome
                 mod_pref = voter_preference.copy()
                 mod_pref[:, i] = option
                 mod_outcome = voting_scheme(mod_pref)
-                mod_outcome = {k: v for k, v in sorted(mod_outcome.items(), key=lambda item: item[1], reverse=True)}
+                mod_outcome = {
+                    k: v
+                    for k, v in sorted(
+                        mod_outcome.items(), key=lambda item: item[1], reverse=True
+                    )
+                }
 
                 # Check the modified happiness
-                mod_happiness = self.happiness_measure(option, mod_outcome.keys())
-                if mod_happiness > individual_happiness[i]: # Only consider options that increase happiness
+                mod_happiness = self.happiness_measure(
+                    option, mod_outcome.keys()  # type:ignore
+                )
+                if (
+                    mod_happiness > individual_happiness[i]
+                ):  # Only consider options that increase happiness
                     # Save (modified preference, modified happiness)
                     options.add((option, mod_happiness))
             strategic_options.append(options)
