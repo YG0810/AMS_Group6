@@ -6,23 +6,39 @@ def flip_reward_risk(voter_preference: np.ndarray,
                                     strategic_options: list,
                                     p: float) -> tuple:
     """
-    Computes the risk of strategic dishonesty in voting based on preference changes and happiness deltas.
-    The risk score combines the happiness difference and preference rearrangement distance, normalized
-    between 0 and 1. Higher scores indicate higher risk of strategic manipulation.
-    
+    Computes the likelihood of strategic voting by evaluating the trade-off between preference changes 
+    and potential happiness gains. For each voter, analyzes how likely they are to deviate from their 
+    true preferences when presented with strategic options that could increase their happiness.
+
+    The risk score (between 0 and 1) reflects how tempting a strategic option is, based on:
+    1. How much happiness could be gained (delta happiness)
+    2. How many preference switches are needed (inversion distance)
+    Higher scores suggest higher likelihood of strategic voting.
+
     Args:
         voter_preference (np.ndarray): Original preference rankings for each voter
         individual_happiness (List[float]): Current happiness values for each voter (must be floats between 0 and 1, meaning normalized)
         strategic_options (list): List of possible strategic options for each voter, 
                                 where each option is a tuple (preference_ranking, expected_happiness)
-        p (float): Power parameter controlling the risk calculation sensitivity, recommended values in range [1.3, 1.6]
-        
+        p (float): Sensitivity parameter controlling risk assessment, must be in range [1.3, 1.7]
+        - p=1.3 : Conservative assessment
+            Assigns high risk mainly when large happiness gains require few preference changes
+        - p=1.7 : Stringent assessment (preferably)
+            More likely to flag subtle strategic opportunities
+            Assumes voters are tempted even by small happiness gains if few changes needed
+
     Returns:
         tuple: (risks, overall_max_risk) where:
             - risks: List of (preference, risk_score) tuples for each voter's highest risk option
             - overall_max_risk: Maximum risk score across all voters (float between 0 and 1)
+    
+    Raises:
+        ValueError: If p is not in the range [1.3, 1.7]
     """
 
+    if not 1.3 <= p <= 1.7:
+        raise ValueError(f"Parameter p must be in range [1.3, 1.7], got {p}")
+   
     risks = []
     for i, options in enumerate(strategic_options):
         if not options:
@@ -74,48 +90,45 @@ def inversion_ranking_distance(base_pref: list, option_pref: list) -> float:
     max_inversions = (n * (n - 1)) // 2
     return inversions / max_inversions if max_inversions > 0 else 0.0
 
-def main():
-    voter_preference = np.array([
-        ['A', 'B', 'C'],  # Voter 1's original preference
-        ['B', 'A', 'C'],  # Voter 2's original preference
-        ['C', 'A', 'B']   # Voter 3's original preference
-    ])
+""" Example Usage """
 
-    individual_happiness = [0.7, 0.5, 0.6]
+voter_preference = np.array([
+    ['A', 'B', 'C'],  # Voter 1's original preference
+    ['B', 'A', 'C'],  # Voter 2's original preference
+    ['C', 'A', 'B']   # Voter 3's original preference
+])
 
-    strategic_options = [
-        [  # Options for Voter 1
-            (['B', 'A', 'C'], 0.8),   # Option 1
-            (['C', 'A', 'B'], 0.75)    # Option 2
-        ],
-        [  # Options for Voter 2
-            (['A', 'B', 'C'], 0.9)    # Option 1
-        ],
-        [  # Options for Voter 3
-            (['A', 'C', 'B'], 0.9),   # Option 1
-            (['B', 'C', 'A'], 0.65)    # Option 2
-        ]
+individual_happiness = [0.4, 0.25, 0.6]
+
+strategic_options = [
+    [  # Options for Voter 1
+        (['B', 'A', 'C'], 0.8),   # Option 1
+        (['C', 'A', 'B'], 0.75)    # Option 2
+    ],
+    [  # Options for Voter 2
+        (['A', 'B', 'C'], 0.9)    # Option 1
+    ],
+    [  # Options for Voter 3
+        (['A', 'C', 'B'], 0.79),   # Option 1
+        (['B', 'C', 'A'], 0.65)    # Option 2
     ]
+]
 
-    p = 1.5 # logically relevant p in [1.3, 1.6]
+p = 1.7 # logically relevant p in [1.3, 1.6]
 
-    individual_risks, overall_max_risk = flip_reward_risk(
-        voter_preference,  
-        individual_happiness, 
-        strategic_options, 
-        p
-    )
+individual_risks, overall_max_risk = flip_reward_risk(
+    voter_preference,  
+    individual_happiness, 
+    strategic_options, 
+    p
+)
 
-    print("Voter Strategic Options and Risks:")
-    for i, (voter_option, risk) in enumerate(zip(strategic_options, individual_risks), 1):
-        print(f"\nVoter {i}:")
-        print(f"Original Preference: {voter_preference[i-1]}")
-        print("Strategic Options:")
-        for option in voter_option:
-            print(f"  - Preference: {option[0]}, Expected Happiness: {option[1]}")
-        print(f"Best Strategic Option: {risk[0]} (Risk Score: {risk[1]:.4f})")
+for i, (voter_option, risk) in enumerate(zip(strategic_options, individual_risks), 1):
+    print(f"\nVoter {i}:")
+    print(f"Original Preference: {voter_preference[i-1]}")
+    print("Strategic Options:")
+    for option in voter_option:
+        print(f"  - Preference: {option[0]}, Difference in Happiness: {round(abs(individual_happiness[i-1] - option[1]), ndigits=3)}")
+    print(f"Best Strategic Option: {risk[0]} (Risk Score: {risk[1]:.4f})")
 
-    print(f"\nOverall Maximum Risk: {overall_max_risk:.4f}")
-
-if __name__ == "__main__":
-    main()
+print(f"\nOverall Maximum Risk: {overall_max_risk:.4f}")
