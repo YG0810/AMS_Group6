@@ -63,6 +63,6 @@ class BTVA:
                     # Save (modified preference, modified happiness)
                     options.add((option, mod_happiness))
             strategic_options.append(options)
-        risk = self.risk_measure(voter_preference, voting_scheme, strategic_options)
+        risk = self.risk_measure(voter_preference, voting_scheme, individual_happiness, strategic_options)
 
         return outcome, individual_happiness, overall_happiness, strategic_options, risk
