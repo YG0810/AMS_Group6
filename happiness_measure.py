@@ -10,9 +10,14 @@ def createRanking(
     distanceWeights: list[float],
 ) -> list[float]:
 
+    NonZeroWeightsCount = 0
+    for w in preferenceWeights:
+        if w > 0:
+            NonZeroWeightsCount += 1
+
     result: list[float] = []
     for i, key in enumerate(preferences):
-        distance = len(outcome) - outcome.index(key)
+        distance = max(0, NonZeroWeightsCount - outcome.index(key))
         result.append(distance * preferenceWeights[i] * distanceWeights[distance - 1])
 
     return result
@@ -28,12 +33,6 @@ def DCG(ranking: list[float]):
     return result
 
 
-def iDCG(ranking: list[float]):
-    ranking = sorted(ranking, reverse=True)
-
-    return DCG(ranking)
-
-
 def NDCG(
     preferences: npchar,
     outcome: list[str],
@@ -44,26 +43,81 @@ def NDCG(
     # No weights specified, let's use weights of 1 for everything
     if preferenceWeights is None:
         preferenceWeights = [1 for _ in preferences]
+    elif len(preferenceWeights) < len(preferences):
+        paddingAmount = len(preferences) - len(preferenceWeights)
+        preferenceWeights += [0 for _ in range(paddingAmount)]
 
     # No weights specified, let's use weights of 1 for everything
     if distanceWeights is None:
         distanceWeights = [1 for _ in preferences]
+    elif len(distanceWeights) < len(preferences):
+        paddingAmount = len(preferences) - len(distanceWeights)
+        preferenceWeights += [0 for _ in range(paddingAmount)]
 
+    # Let's generate the rankings of the preferences
     rankings = createRanking(preferences, outcome, preferenceWeights, distanceWeights)
 
-    result = DCG(rankings) / iDCG(rankings)
+    # Let's generate the ideal rankings for normalisation, which is possible if pref==outcome
+    # Note that I intentionally sacrificed a simple implementation in favour of reusing the same code path for consistency
+    idealRankings = createRanking(
+        np.char.array(outcome), outcome, preferenceWeights, distanceWeights
+    )
+
+    dcg = DCG(rankings)
+    idcg = DCG(idealRankings)
+
+    if idcg == 0:
+        return 0
+
+    result = dcg / idcg
 
     return result
 
 
 # Test code
+def testPerfectChoices(n: int, k: int):
+    pref = np.char.array([str(i) for i in range(n)])
+    outcome = list(pref)
+
+    # We only consider top k choices
+    preferenceWeights = [1.0 for _ in range(k)]
+
+    result = NDCG(pref, outcome, preferenceWeights)
+
+    assert result == 1
+
+    print(result)
+
+
+def testCompletelyFucked(n: int):
+    pref = np.char.array([str(i) for i in range(n)])
+    outcome = list(reversed(pref))
+
+    # We only consider top k choices
+    preferenceWeights = [1.0 for _ in range(2)]
+
+    result = NDCG(pref, outcome, preferenceWeights)
+
+    assert result == 0
+
+    print(result)
+
+
+def testCompletelyFuckedAllChoicesConsidered(n: int):
+    pref = np.char.array([str(i) for i in range(n)])
+    outcome = list(reversed(pref))
+
+    result = NDCG(pref, outcome)
+
+    assert result > 0 and result < 1
+
+    print(result)
+
+
 def main():
-
-    pref = np.char.array(["A", "B", "D", "E", "F", "C", "G", "H", "I", "J"])
-    outcome = ["J", "I", "H", "G", "C", "F", "E", "D", "B", "A"]
-
-    print(NDCG(pref, outcome))
-    pass
+    testPerfectChoices(100, 100)
+    testCompletelyFucked(100)
+    testCompletelyFuckedAllChoicesConsidered(100)
 
 
 if __name__ == "__main__":
