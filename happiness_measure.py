@@ -59,8 +59,8 @@ def NDCG(
 # Test code
 def main():
 
-    pref = np.char.array(["A", "B", "D", "E", "F"])
-    outcome = ["A", "B", "F", "D", "E"]
+    pref = np.char.array(["A", "B", "D", "E", "F", "C", "G", "H", "I", "J"])
+    outcome = ["J", "I", "H", "G", "C", "F", "E", "D", "B", "A"]
 
     print(NDCG(pref, outcome))
     pass
