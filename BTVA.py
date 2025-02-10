@@ -7,10 +7,12 @@ from itertools import permutations
 VotingScheme = Callable[[npchar], dict[str, int]]
 
 # (voter_preference, outcome, weights) -> float
-HappinessMeasure = Callable[[npchar, list[str], list[float] | None], float]
+HappinessMeasure = Callable[
+    [npchar, list[str], list[float] | None, list[float] | None], float
+]
 
-# (voter_preference,voting_scheme, strategic_options, weights) -> float
-RiskMeasure = Callable[[npchar, VotingScheme, list[Any]], float]
+# (voter_preference,voting_scheme, individual_happiness, strategic_options, weights) -> float
+RiskMeasure = Callable[[npchar, VotingScheme, list[float], list[Any]], float]
 
 
 # (non-strategic voting outcome, voter happiness, overall happiness, voting options per voter, overall risk)
@@ -21,8 +23,8 @@ class BTVA:
 
     def __init__(
         self,
-        happiness_measure: HappinessMeasure = lambda _, __, ___: np.nan,
-        risk_measure: RiskMeasure = lambda _, __, ___: np.nan,
+        happiness_measure: HappinessMeasure = lambda _, __, ___, ____: np.nan,
+        risk_measure: RiskMeasure = lambda _, __, ___, ____: np.nan,
     ):
         """
         Create a Basic Tactical Voting Analyst (BTVA) object.
@@ -99,6 +101,8 @@ class BTVA:
                     # Save (modified preference, modified happiness)
                     options.add((option, mod_happiness))
             strategic_options.append(options)
-        risk = self.risk_measure(voter_preference, voting_scheme, individual_happiness, strategic_options)
+        risk = self.risk_measure(
+            voter_preference, voting_scheme, individual_happiness, strategic_options
+        )
 
         return outcome, individual_happiness, overall_happiness, strategic_options, risk
