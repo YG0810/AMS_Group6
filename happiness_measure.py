@@ -61,9 +61,8 @@ def main():
 
     pref = np.char.array(["A", "B", "D", "E", "F"])
     outcome = ["A", "B", "F", "D", "E"]
-    rankings = createRanking(pref, outcome, [1, 1, 1, 1, 1], [1, 1, 1, 1, 1])
 
-    print(DCG(rankings))
+    print(NDCG(pref, outcome))
     pass
 
 
