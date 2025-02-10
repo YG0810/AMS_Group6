@@ -4,7 +4,7 @@ from typing import List
 def flip_reward_risk(voter_preference: np.ndarray,
                                     individual_happiness: List[float],
                                     strategic_options: list,
-                                    p: float) -> tuple:
+                                    p: float = 1.7) -> tuple:
     """
     Computes the likelihood of strategic voting by evaluating the trade-off between preference changes 
     and potential happiness gains. For each voter, analyzes how likely they are to deviate from their 
@@ -93,24 +93,24 @@ def inversion_ranking_distance(base_pref: list, option_pref: list) -> float:
 """ Example Usage """
 
 voter_preference = np.array([
-    ['A', 'B', 'C'],  # Voter 1's original preference
-    ['B', 'A', 'C'],  # Voter 2's original preference
-    ['C', 'A', 'B']   # Voter 3's original preference
+    ['A', 'B', 'C', 'D'],  # Voter 1's original preference
+    ['B', 'A', 'D', 'C'],  # Voter 2's original preference
+    ['C', 'D', 'A', 'B']   # Voter 3's original preference
 ])
 
-individual_happiness = [0.4, 0.25, 0.6]
+individual_happiness = [0.4, 0.3, 0.6]
 
 strategic_options = [
     [  # Options for Voter 1
-        (['B', 'A', 'C'], 0.8),   # Option 1
-        (['C', 'A', 'B'], 0.75)    # Option 2
+        (['B', 'A', 'C', 'D'], 0.8),   # Option 1
+        (['C', 'A', 'B', 'D'], 0.6)    # Option 2
     ],
     [  # Options for Voter 2
-        (['A', 'B', 'C'], 0.9)    # Option 1
+        (['A', 'B', 'D', 'C'], 0.8)    # Option 1
     ],
     [  # Options for Voter 3
-        (['A', 'C', 'B'], 0.79),   # Option 1
-        (['B', 'C', 'A'], 0.65)    # Option 2
+        (['D', 'A', 'C', 'B'], 0.79),   # Option 1
+        (['D', 'B', 'C', 'A'], 0.65)    # Option 2
     ]
 ]
 
@@ -128,7 +128,10 @@ for i, (voter_option, risk) in enumerate(zip(strategic_options, individual_risks
     print(f"Original Preference: {voter_preference[i-1]}")
     print("Strategic Options:")
     for option in voter_option:
-        print(f"  - Preference: {option[0]}, Difference in Happiness: {round(abs(individual_happiness[i-1] - option[1]), ndigits=3)}")
+        inv_dist = inversion_ranking_distance(voter_preference[i-1], option[0])
+        print(f"  - Preference: {option[0]}, "
+              f"Difference in Happiness: {round(abs(individual_happiness[i-1] - option[1]), ndigits=3)}, "
+              f"Inversion Distance: {inv_dist:.4f}")
     print(f"Best Strategic Option: {risk[0]} (Risk Score: {risk[1]:.4f})")
 
 print(f"\nOverall Maximum Risk: {overall_max_risk:.4f}")
