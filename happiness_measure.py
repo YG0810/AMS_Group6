@@ -3,14 +3,22 @@ from numpy import chararray as npchar
 import numpy as np
 
 
-def createRanking(preferences: npchar, outcome: list[str]) -> list[int]:
-    return [
-        (len(outcome) - outcome.index(key)) if key in outcome else 0
-        for key in preferences
-    ]
+def createRanking(
+    preferences: npchar,
+    outcome: list[str],
+    preferenceWeights: list[float],
+    distanceWeights: list[float],
+) -> list[float]:
+
+    result: list[float] = []
+    for i, key in enumerate(preferences):
+        distance = len(outcome) - outcome.index(key)
+        result.append(distance * preferenceWeights[i] * distanceWeights[distance - 1])
+
+    return result
 
 
-def DCG(ranking: list[int]):
+def DCG(ranking: list[float]):
     result = 0.0
 
     for i in range(len(ranking)):
@@ -20,31 +28,40 @@ def DCG(ranking: list[int]):
     return result
 
 
-def iDCG(ranking: list[int]):
+def iDCG(ranking: list[float]):
     ranking = sorted(ranking, reverse=True)
 
     return DCG(ranking)
 
 
 def NDCG(
-    preferences: npchar, outcome: list[str], weights: list[float] | None = None
+    preferences: npchar,
+    outcome: list[str],
+    preferenceWeights: list[float] | None = None,
+    distanceWeights: list[float] | None = None,
 ) -> float:
-    # No weights specified, let's use weights of 1 for everything
-    if weights is None:
-        weights = [1 for _ in preferences]
 
-    rankings = createRanking(preferences, outcome)
+    # No weights specified, let's use weights of 1 for everything
+    if preferenceWeights is None:
+        preferenceWeights = [1 for _ in preferences]
+
+    # No weights specified, let's use weights of 1 for everything
+    if distanceWeights is None:
+        distanceWeights = [1 for _ in preferences]
+
+    rankings = createRanking(preferences, outcome, preferenceWeights, distanceWeights)
 
     result = DCG(rankings) / iDCG(rankings)
 
     return result
 
 
+# Test code
 def main():
 
     pref = np.char.array(["A", "B", "D", "E", "F"])
     outcome = ["A", "B", "F", "D", "E"]
-    rankings = createRanking(pref, outcome)
+    rankings = createRanking(pref, outcome, [1, 1, 1, 1, 1], [1, 1, 1, 1, 1])
 
     print(DCG(rankings))
     pass
