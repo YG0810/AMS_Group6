@@ -1,7 +1,8 @@
 import numpy as np
-from numpy.char import chararray as npchar
+from numpy import chararray as npchar
 
-def anti_plurality_voting(voter_preference: npchar) -> dict:
+
+def anti_plurality_voting(voter_preference: npchar) -> dict[str, int]:
     """
     Implements anti-plurality voting: each voter votes against one candidate, the candidate with the fewest votes wins.
 
@@ -21,7 +22,8 @@ def anti_plurality_voting(voter_preference: npchar) -> dict:
 
     return candidate_values
 
-def borda_count_voting(voter_preference: npchar) -> dict:
+
+def borda_count_voting(voter_preference: npchar) -> dict[str, int]:
     """
     Implements Borda count voting: candidate ranked first gets m-1 points, second gets m-2 points, etc., last gets 0 points.
 
@@ -37,10 +39,11 @@ def borda_count_voting(voter_preference: npchar) -> dict:
         points = m - 1 - preference_rank  # First gets m-1 points, second m-2, etc.
         for voter in range(n):
             candidate_values[voter_preference[preference_rank, voter]] += points
-            
+
     return candidate_values
 
-def two_person_voting(voter_preference: npchar) -> dict:
+
+def two_person_voting(voter_preference: npchar) -> dict[str, int]:
     """
     Implements two-person voting: each voter votes for their top two candidates.
 
@@ -55,11 +58,12 @@ def two_person_voting(voter_preference: npchar) -> dict:
     for preference in range(m):
         for voter in range(n):
             candidate_values[voter_preference[preference, voter]] += 1
-        if preference == 1: # Only count the top two preferences
+        if preference == 1:  # Only count the top two preferences
             break
     return candidate_values
 
-def plurality_voting(voter_preference: npchar) -> dict:
+
+def plurality_voting(voter_preference: npchar) -> dict[str, int]:
     """
     Implements plurality voting: each voter votes for their top candidate.
 
