@@ -16,7 +16,9 @@ RiskMeasure = Callable[[npchar, VotingScheme, list[float], list[Any]], float]
 
 
 # (non-strategic voting outcome, voter happiness, overall happiness, voting options per voter, overall risk)
-BTVA_Output = tuple[dict[str, int], list[float], float, list[set], float]
+BTVA_Output = tuple[
+    dict[str, int], list[float], float, list[set[tuple[list[str], float]]], float
+]
 
 
 class BTVA:
