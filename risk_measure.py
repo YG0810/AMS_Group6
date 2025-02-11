@@ -3,6 +3,7 @@ from typing import List
 
 from BTVA import VotingScheme
 
+
 def FlipRewardRisk(
     voter_preference: np.ndarray,
     _: VotingScheme | None,
@@ -54,7 +55,9 @@ def FlipRewardRisk(
         risks4i = []
         for pref in options:
             preference, happiness = pref
-            norm_dist = inversion_ranking_distance(voter_preference[:,i], list(preference))
+            norm_dist = inversion_ranking_distance(
+                voter_preference[:, i], list(preference)
+            )
             delta_happ = abs(happiness - individual_happiness[i])
             score = np.tanh(delta_happ / np.log(norm_dist ** (p - 1) + 1))
             risks4i.append((preference, score))
@@ -68,7 +71,7 @@ def FlipRewardRisk(
     return overall_max_risk
 
 
-def inversion_ranking_distance(base_pref: list, option_pref: list) -> float:
+def inversion_ranking_distance(base_pref: np.ndarray, option_pref: list) -> float:
     """
     Computes the normalized minimal rearrangement distance between two rankings based on the number of
     displacements required to transform one ranking into another. The result is normalized between 0 and 1,
@@ -130,7 +133,7 @@ def main():
     p = 1.7  # logically relevant p in [1.3, 1.6]
 
     individual_risks, overall_max_risk = FlipRewardRisk(
-        voter_preference, None, individual_happiness, strategic_options, p
+        voter_preference, None, individual_happiness, strategic_options
     )
 
     for i, (voter_option, risk) in enumerate(

@@ -1,8 +1,8 @@
 import numpy as np
 from BTVA import BTVA
-from happiness_measure import *
+from happiness_measure import NDCG
 from risk_measure import FlipRewardRisk
-from voting_schemes import * 
+from voting_schemes import plurality_voting
 
 voter_preference = np.char.array(
     # voters:   1    2    3    4
@@ -16,7 +16,8 @@ voter_preference = np.char.array(
 # Analyze the voting preferences
 btva = BTVA(happiness_measure=NDCG, risk_measure=FlipRewardRisk)
 outcome, happiness, overall_happiness, _, risk = btva.analyze(
-    voter_preference, plurality_voting)
+    voter_preference, plurality_voting
+)
 print(outcome)
 print(happiness)
 print(risk)
