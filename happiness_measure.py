@@ -42,17 +42,17 @@ def NDCG(
 
     # No weights specified, let's use weights of 1 for everything
     if preferenceWeights is None:
-        preferenceWeights = [1 for _ in preferences]
+        preferenceWeights = [1.0] * len(preferences)
     elif len(preferenceWeights) < len(preferences):
         paddingAmount = len(preferences) - len(preferenceWeights)
-        preferenceWeights += [0 for _ in range(paddingAmount)]
+        preferenceWeights += [0] * paddingAmount
 
     # No weights specified, let's use weights of 1 for everything
     if distanceWeights is None:
-        distanceWeights = [1 for _ in preferences]
+        distanceWeights = [1.0] * len(preferences)
     elif len(distanceWeights) < len(preferences):
         paddingAmount = len(preferences) - len(distanceWeights)
-        preferenceWeights += [0 for _ in range(paddingAmount)]
+        preferenceWeights += [0] * paddingAmount
 
     # Let's generate the rankings of the preferences
     rankings = createRanking(preferences, outcome, preferenceWeights, distanceWeights)
@@ -72,6 +72,7 @@ def NDCG(
     result = dcg / idcg
 
     return result
+
 
 def KendallTau(
     preferences: npchar,
@@ -100,13 +101,14 @@ def KendallTau(
     # Normalize to [0, 1]
     return (tau + 1) / 2
 
+
 # Test code
 def testPerfectChoices(n: int, k: int):
     pref = np.char.array([str(i) for i in range(n)])
     outcome = list(pref)
 
     # We only consider top k choices
-    preferenceWeights = [1.0 for _ in range(k)]
+    preferenceWeights = [1.0] * k
 
     result = NDCG(pref, outcome, preferenceWeights)
 
@@ -120,7 +122,7 @@ def testCompletelyFucked(n: int):
     outcome = list(reversed(pref))
 
     # We only consider top k choices
-    preferenceWeights = [1.0 for _ in range(2)]
+    preferenceWeights = [1.0] * int(n / 2)
 
     result = NDCG(pref, outcome, preferenceWeights)
 

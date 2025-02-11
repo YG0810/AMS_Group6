@@ -11,16 +11,17 @@ HappinessMeasure = Callable[
     [npchar, list[str], list[float] | None, list[float] | None], float
 ]
 
-# (voter_preference,voting_scheme, individual_happiness, strategic_options, weights) -> float
+# (voter_preference,voting_scheme, individual_happiness, strategic_options) -> float
 RiskMeasure = Callable[[npchar, VotingScheme, list[float], list[Any]], float]
 
 
 # (non-strategic voting outcome, voter happiness, overall happiness, voting options per voter, overall risk)
-BTVA_Output = tuple[dict[str, int], list[float], float, list[set], float]
+BTVA_Output = tuple[
+    dict[str, int], list[float], float, list[set[tuple[list[str], float]]], float
+]
 
 
 class BTVA:
-
     def __init__(
         self,
         happiness_measure: HappinessMeasure = lambda _, __, ___, ____: np.nan,
@@ -102,7 +103,10 @@ class BTVA:
                     options.add((option, mod_happiness))
             strategic_options.append(options)
         risk = self.risk_measure(
-            voter_preference, voting_scheme, individual_happiness, strategic_options
+            voter_preference,
+            voting_scheme,
+            individual_happiness,
+            strategic_options,
         )
 
         return outcome, individual_happiness, overall_happiness, strategic_options, risk
