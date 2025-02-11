@@ -3,8 +3,6 @@ from typing import List
 
 from BTVA import VotingScheme
 
-
-
 def flip_reward_risk(
     voter_preference: np.ndarray,
     _: VotingScheme | None,
@@ -56,7 +54,7 @@ def flip_reward_risk(
         risks4i = []
         for pref in options:
             preference, happiness = pref
-            norm_dist = inversion_ranking_distance(voter_preference[i], preference)
+            norm_dist = inversion_ranking_distance(voter_preference[:,i], list(preference))
             delta_happ = abs(happiness - individual_happiness[i])
             score = np.tanh(delta_happ / np.log(norm_dist ** (p - 1) + 1))
             risks4i.append((preference, score))

@@ -2,7 +2,7 @@ import numpy as np
 from BTVA import BTVA
 from happiness_measure import NDCG
 from risk_measure import flip_reward_risk
-from voting_schemes import plurality_voting
+from voting_schemes import * 
 
 voter_preference = np.char.array(
     # voters:   1    2    3    4
