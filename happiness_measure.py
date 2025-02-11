@@ -77,6 +77,7 @@ def KendallTau(
     preferences: npchar,
     outcome: list[str],
     preferenceWeights: list[float] | None = None,
+    distanceWeights: list[float] | None = None
 ) -> float:
 
     # No weights specified, let's use weights of 1 for everything
@@ -91,8 +92,7 @@ def KendallTau(
     for i in range(len(preferences)):
         if preferenceWeights[i] != 0:
             if str(preferences[i]) == str(outcome[i]):
-                concordantPairs += 1
-    print('#cc pairs:', concordantPairs)
+                concordantPairs += preferenceWeights[i]
 
     # Calculate the Kendall Tau measure
     tau = (2 * concordantPairs - len(preferences)) / len(preferences)
