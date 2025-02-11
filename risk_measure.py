@@ -3,7 +3,7 @@ from typing import List
 
 from BTVA import VotingScheme
 
-def flip_reward_risk(
+def FlipRewardRisk(
     voter_preference: np.ndarray,
     _: VotingScheme | None,
     individual_happiness: List[float],
@@ -129,7 +129,7 @@ strategic_options = [
 def main():
     p = 1.7  # logically relevant p in [1.3, 1.6]
 
-    individual_risks, overall_max_risk = flip_reward_risk(
+    individual_risks, overall_max_risk = FlipRewardRisk(
         voter_preference, None, individual_happiness, strategic_options, p
     )
 
