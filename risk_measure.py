@@ -114,7 +114,6 @@ def JointFlipRewardRisk(
             
         individual_risks.append(max(risks4i))
     
-    print(individual_risks)
     n_voters = len(individual_risks)
     scenarios = list(product([0, 1], repeat=n_voters))
     
@@ -131,8 +130,6 @@ def JointFlipRewardRisk(
                 prob *= individual_risks[voter_idx]
             else:
                 prob *= (1 - individual_risks[voter_idx])
-        
-        print(f"{scenario} - {prob}")
         overall_max_risk = max(overall_max_risk, prob)
     
     return overall_max_risk
