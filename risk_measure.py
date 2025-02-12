@@ -1,5 +1,6 @@
 import numpy as np
 from typing import List
+from itertools import product
 
 from BTVA import VotingScheme
 
@@ -41,8 +42,7 @@ def FlipRewardRisk(
         ValueError: If p is not in the range [1.3, 1.7]
     """
 
-    p = 1.7
-
+    p = 1.7 # define manually
     if not 1.3 <= p <= 1.7:
         raise ValueError(f"Parameter p must be in range [1.3, 1.7], got {p}")
 
@@ -51,7 +51,7 @@ def FlipRewardRisk(
         if not options:
             risks.append(set())
             continue
-
+    
         risks4i = []
         for pref in options:
             preference, happiness = pref
@@ -71,6 +71,71 @@ def FlipRewardRisk(
     # return risks, overall_max_risk
     return overall_max_risk
 
+def JointFlipRewardRisk(
+    voter_preference: np.ndarray,
+    _: VotingScheme | None,
+    individual_happiness: List[float],
+    strategic_options: list
+) -> float:
+    """
+    Computes the joint likelihood of strategic voting by evaluating all possible 
+    combinations of honest/strategic voting among voters.
+
+    Args:
+        voter_preference (np.ndarray): Original preference rankings for each voter
+        individual_happiness (List[float]): Current happiness values for each voter
+        strategic_options (list): List of possible strategic options for each voter
+        p (float): Sensitivity parameter controlling risk assessment, must be in range [1.3, 1.7]
+
+    Returns:
+        - overall_max_risk: Maximum risk score (float between 0 and 1)
+
+    """
+
+    p = 1.7 # define manually
+    if not 1.3 <= p <= 1.7:
+        raise ValueError(f"Parameter p must be in range [1.3, 1.7], got {p}")
+    
+    individual_risks = []
+    for i, options in enumerate(strategic_options):
+        if not options:
+            individual_risks.append(0.0)
+            continue
+            
+        risks4i = []
+        for pref in options:
+            preference, happiness = pref
+            norm_dist = inversion_ranking_distance(
+                voter_preference[:, i], list(preference)
+            )
+            delta_happ = abs(happiness - individual_happiness[i])
+            score = np.tanh(delta_happ / np.log(norm_dist ** (p - 1) + 1))
+            risks4i.append(score)
+            
+        individual_risks.append(max(risks4i))
+    
+    print(individual_risks)
+    n_voters = len(individual_risks)
+    scenarios = list(product([0, 1], repeat=n_voters))
+    
+    overall_max_risk = 0.0
+    for scenario in scenarios:
+        if  all(x == 0 for x in scenario): # all voters vote honestly
+            continue 
+
+        prob = 1.0
+        for voter_idx, is_strategic in enumerate(scenario):
+            if individual_risks[voter_idx] == 0.0: # a voter has individual risk 0.0, hence votes honestly guaranteed
+                continue
+            if is_strategic:
+                prob *= individual_risks[voter_idx]
+            else:
+                prob *= (1 - individual_risks[voter_idx])
+        
+        print(f"{scenario} - {prob}")
+        overall_max_risk = max(overall_max_risk, prob)
+    
+    return overall_max_risk
 
 def inversion_ranking_distance(base_pref: np.ndarray, option_pref: list) -> float:
     """
@@ -103,61 +168,6 @@ def inversion_ranking_distance(base_pref: np.ndarray, option_pref: list) -> floa
 
     max_inversions = (n * (n - 1)) // 2
     return inversions / max_inversions if max_inversions > 0 else 0.0
-
-
-""" Example Usage """
-
-voter_preference = np.array(
-    [
-        ["A", "B", "C", "D"],  # Voter 1's original preference
-        ["B", "A", "D", "C"],  # Voter 2's original preference
-        ["C", "D", "A", "B"],  # Voter 3's original preference
-    ]
-)
-
-individual_happiness = [0.4, 0.3, 0.6]
-
-strategic_options = [
-    [  # Options for Voter 1
-        (["B", "A", "C", "D"], 0.8),  # Option 1
-        (["C", "A", "B", "D"], 0.6),  # Option 2
-    ],
-    [(["A", "B", "D", "C"], 0.8)],  # Options for Voter 2  # Option 1
-    [  # Options for Voter 3
-        (["D", "A", "C", "B"], 0.79),  # Option 1
-        (["D", "B", "C", "A"], 0.65),  # Option 2
-    ],
-]
-
-
-def main():
-    p = 1.7  # logically relevant p in [1.3, 1.6]
-
-    individual_risks, overall_max_risk = FlipRewardRisk(
-        voter_preference, None, individual_happiness, strategic_options
-    )
-
-    for i, (voter_option, risk) in enumerate(
-        zip(strategic_options, individual_risks), 1
-    ):
-        print(f"\nVoter {i}:")
-        print(f"Original Preference: {voter_preference[i-1]}")
-        print("Strategic Options:")
-        for option in voter_option:
-            inv_dist = inversion_ranking_distance(voter_preference[i - 1], option[0])
-            print(
-                f"  - Preference: {option[0]}, "
-                f"Difference in Happiness: {round(abs(individual_happiness[i-1] - option[1]), ndigits=3)}, "
-                f"Inversion Distance: {inv_dist:.4f}"
-            )
-        print(f"Best Strategic Option: {risk[0]} (Risk Score: {risk[1]:.4f})")
-
-    print(f"\nOverall Maximum Risk: {overall_max_risk:.4f}")
-
-
-if __name__ == "__main__":
-    main()
-
 
 def probStrategicVoting(
     _: np.ndarray,
