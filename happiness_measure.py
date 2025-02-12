@@ -101,6 +101,41 @@ def KendallTau(
     return (tau + 1) / 2
 
 
+# Bubble Sort Distance function to count swaps
+def bubble_sort_distance(arr, candidate):
+    swaps = 0
+    n = len(arr)
+    arr = list(arr)  # Convert to list to perform bubble sort
+    
+    # first locations
+    index = arr.index(candidate)
+
+    #  Move the candidate to the first position using Bubble Sort swaps
+    while index > 0:
+        #Swap
+        arr[index], arr[index - 1] = arr[index - 1], arr[index]  
+        swaps += 1
+        index -= 1
+
+    return swaps
+
+#  Extract unique candidates (A, B, C)
+candidates = np.unique(voter_preference)  
+swap_counts = {str(candidate): 0 for candidate in candidates}  
+
+# Process each voter (each column in the matrix)
+for voter in range(voter_preference.shape[1]):
+    preferences = voter_preference[:, voter]  # preferences of a voter
+
+    # calculate swap
+    for candidate in candidates:
+        swap_counts[str(candidate)] += bubble_sort_distance(preferences, candidate)
+
+# print result
+print("{", ", ".join(f"'{key}': {value}" for key, value in swap_counts.items()), "}")
+
+
+
 # Test code
 def testPerfectChoices(n: int, k: int):
     pref = np.char.array([str(i) for i in range(n)])
