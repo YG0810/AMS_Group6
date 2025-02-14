@@ -100,41 +100,32 @@ def KendallTau(
     # Normalize to [0, 1]
     return (tau + 1) / 2
 
-
-# Bubble Sort Distance function to count swaps
-def bubble_sort_distance(arr, candidate):
-    swaps = 0
-    n = len(arr)
-    arr = list(arr)  # Convert to list to perform bubble sort
+def BubbleSortDistance(preferences: npchar,
+                        outcome: list[str],
+                        preferenceWeights: list[float] | None = None,
+                        _: list[float] | None = None) -> float:
+    n = len(preferences)
     
-    # first locations
-    index = arr.index(candidate)
-
-    #  Move the candidate to the first position using Bubble Sort swaps
-    while index > 0:
-        #Swap
-        arr[index], arr[index - 1] = arr[index - 1], arr[index]  
-        swaps += 1
-        index -= 1
-
-    return swaps
-
-#  Extract unique candidates (A, B, C)
-candidates = np.unique(voter_preference)  
-swap_counts = {str(candidate): 0 for candidate in candidates}  
-
-# Process each voter (each column in the matrix)
-for voter in range(voter_preference.shape[1]):
-    preferences = voter_preference[:, voter]  # preferences of a voter
-
-    # calculate swap
-    for candidate in candidates:
-        swap_counts[str(candidate)] += bubble_sort_distance(preferences, candidate)
-
-# print result
-print("{", ", ".join(f"'{key}': {value}" for key, value in swap_counts.items()), "}")
-
-
+    # No weights specified, let's use weights of 1 for everything
+    if preferenceWeights is None:
+        preferenceWeights = [1 for _ in preferences]
+    elif len(preferenceWeights) < len(preferences):
+        paddingAmount = len(preferences) - len(preferenceWeights)
+        preferenceWeights += [0 for _ in range(paddingAmount)]
+    
+    i, j = np.meshgrid(np.arange(n), np.arange(n))  
+    a = np.argsort(outcome)  
+    b = np.argsort(preferences)  
+    
+    # Calculate weighted disorder
+    weighted_disorder = (
+        np.logical_or(
+            np.logical_and(a[i] < a[j], b[i] > b[j]),  
+            np.logical_and(a[i] > a[j], b[i] < b[j])
+        ) * np.array(preferenceWeights)[i]  
+    ).sum()
+    
+    return 1 - (weighted_disorder / (n * (n - 1)))
 
 # Test code
 def testPerfectChoices(n: int, k: int):
