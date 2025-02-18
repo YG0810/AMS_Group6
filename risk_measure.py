@@ -1,15 +1,14 @@
 import numpy as np
-from typing import List
 from itertools import product
 
 from BTVA import VotingScheme
 
 
 def FlipRewardRisk(
-    voter_preference: np.ndarray,
+    voter_preference: np.char.chararray,
     _: VotingScheme | None,
-    individual_happiness: List[float],
-    strategic_options: list,
+    individual_happiness: list[float],
+    strategic_options: list[set[tuple[np.chararray, float]]],
 ) -> float:
     """
     Computes the likelihood of strategic voting by evaluating the trade-off between preference changes
@@ -42,7 +41,7 @@ def FlipRewardRisk(
         ValueError: If p is not in the range [1.3, 1.7]
     """
 
-    p = 1.7 # define manually
+    p = 1.7  # define manually
     if not 1.3 <= p <= 1.7:
         raise ValueError(f"Parameter p must be in range [1.3, 1.7], got {p}")
 
@@ -51,7 +50,7 @@ def FlipRewardRisk(
         if not options:
             risks.append(set())
             continue
-    
+
         risks4i = []
         for pref in options:
             preference, happiness = pref
@@ -71,14 +70,15 @@ def FlipRewardRisk(
     # return risks, overall_max_risk
     return overall_max_risk
 
+
 def JointFlipRewardRisk(
-    voter_preference: np.ndarray,
+    voter_preference: np.char.chararray,
     _: VotingScheme | None,
-    individual_happiness: List[float],
-    strategic_options: list
+    individual_happiness: list[float],
+    strategic_options: list[set[tuple[np.chararray, float]]],
 ) -> float:
     """
-    Computes the joint likelihood of strategic voting by evaluating all possible 
+    Computes the joint likelihood of strategic voting by evaluating all possible
     combinations of honest/strategic voting among voters.
 
     Args:
@@ -92,16 +92,16 @@ def JointFlipRewardRisk(
 
     """
 
-    p = 1.7 # define manually
+    p = 1.7  # define manually
     if not 1.3 <= p <= 1.7:
         raise ValueError(f"Parameter p must be in range [1.3, 1.7], got {p}")
-    
+
     individual_risks = []
     for i, options in enumerate(strategic_options):
         if not options:
             individual_risks.append(0.0)
             continue
-            
+
         risks4i = []
         for pref in options:
             preference, happiness = pref
@@ -111,28 +111,31 @@ def JointFlipRewardRisk(
             delta_happ = abs(happiness - individual_happiness[i])
             score = np.tanh(delta_happ / np.log(norm_dist ** (p - 1) + 1))
             risks4i.append(score)
-            
+
         individual_risks.append(max(risks4i))
-    
+
     n_voters = len(individual_risks)
     scenarios = list(product([0, 1], repeat=n_voters))
-    
+
     overall_max_risk = 0.0
     for scenario in scenarios:
-        if  all(x == 0 for x in scenario): # all voters vote honestly
-            continue 
+        if all(x == 0 for x in scenario):  # all voters vote honestly
+            continue
 
         prob = 1.0
         for voter_idx, is_strategic in enumerate(scenario):
-            if individual_risks[voter_idx] == 0.0: # a voter has individual risk 0.0, hence votes honestly guaranteed
+            if (
+                individual_risks[voter_idx] == 0.0
+            ):  # a voter has individual risk 0.0, hence votes honestly guaranteed
                 continue
             if is_strategic:
                 prob *= individual_risks[voter_idx]
             else:
-                prob *= (1 - individual_risks[voter_idx])
+                prob *= 1 - individual_risks[voter_idx]
         overall_max_risk = max(overall_max_risk, prob)
-    
+
     return overall_max_risk
+
 
 def inversion_ranking_distance(base_pref: np.ndarray, option_pref: list) -> float:
     """
@@ -165,6 +168,7 @@ def inversion_ranking_distance(base_pref: np.ndarray, option_pref: list) -> floa
 
     max_inversions = (n * (n - 1)) // 2
     return inversions / max_inversions if max_inversions > 0 else 0.0
+
 
 def probStrategicVoting(
     _: np.ndarray,
