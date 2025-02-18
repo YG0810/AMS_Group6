@@ -127,6 +127,44 @@ def BubbleSortDistance(preferences: npchar,
     
     return 1 - (weighted_disorder / (n * (n - 1)))
 
+def get_happiness(
+    voter_preference: list,
+    voting_outcome: list,
+    preference_weights: list = None,
+    distance_weights: list = None,
+):
+    """
+    Calculate the happiness of a voter given their preference and the voting outcome.
+    (Default) --> Top-1 Binary happiness measurement
+    (Alternative) --> Bottom-1 Binary happiness measurement (Set preference_weight = [1, 0, ..., 0] & distance_weights = [0, ..., 0, -1])
+
+    :param voter_preference: The preference of the voter.
+    :param voting_outcome: The outcome of the voting scheme.
+    :param preference_weights: The weights of the preference.
+    :param distance_weights: The weights of the distance between the preference and the outcome.
+    :return: The happiness score.
+    """
+    # Set default weights (Top-1 Binary happiness measurement)
+    if not preference_weights:
+        preference_weights = [1] + [0] * (len(voter_preference) - 1)
+    if not distance_weights:
+        distance_weights = [1] + [0] * (len(voter_preference) - 1)
+
+    # Measure happiness
+    happiness_score = 0
+    for preference_idx in range(len(voter_preference)):
+        # Retrieve distance between preference and outcome
+        distance = abs(
+            preference_idx - voting_outcome.index(voter_preference[preference_idx])
+        )
+
+        # Calculate happiness score
+        happiness_score += (
+            preference_weights[preference_idx] * distance_weights[distance]
+        )
+
+    return happiness_score
+
 # Test code
 def testPerfectChoices(n: int, k: int):
     pref = np.char.array([str(i) for i in range(n)])
