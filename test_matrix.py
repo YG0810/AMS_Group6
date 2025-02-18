@@ -6,6 +6,7 @@ from os import listdir
 from BTVA import BTVA, HappinessMeasure, RiskMeasure, VotingScheme
 import BTVALite
 import happiness_measure
+from pandas import DataFrame
 from measurements import get_happiness
 from risk_measure import FlipRewardRisk, JointFlipRewardRisk, probStrategicVoting
 from voting_schemes import (
@@ -47,6 +48,46 @@ TestMatrixOutput = list[
 ]
 
 
+@dataclass
+class RiskMeasureEntry:
+    name: str
+    risk_values: list[float]
+
+
+@dataclass
+class HappinessMeasureEntry:
+    name: str
+    happiness_values: list[float]
+    risk_measures: list[RiskMeasureEntry]
+
+
+@dataclass
+class VotingSchemeEntry:
+    name: str
+    happiness_measures: list[HappinessMeasureEntry]
+
+
+@dataclass
+class TestOutputEntry:
+    input: np.chararray
+    voting_schemes: list[VotingSchemeEntry]
+
+
+result = TestOutputEntry(np.char.array("Test"), [])
+
+
+for votingSchemeEntry in result.voting_schemes:
+    print(f"Voting Scheme: {votingSchemeEntry.name}")
+
+    for happinessMeasureEntry in votingSchemeEntry.happiness_measures:
+        print(f"\tHappiness measure: {happinessMeasureEntry.name}")
+        print(f"\tHappiness values: {happinessMeasureEntry.happiness_values}")
+
+        for riskMeasureEntry in happinessMeasureEntry.risk_measures:
+            print(f"\tRisk measure: {riskMeasureEntry.name}")
+            print(f"\tRisk values: {riskMeasureEntry.risk_values}")
+
+
 def loadData() -> list[NDArray[np.str_]]:
     files = listdir("test_cases")
 
@@ -62,7 +103,17 @@ def loadData() -> list[NDArray[np.str_]]:
     return list(reversed(test_scenarios))
 
 
-def testMatrix() -> TestMatrixOutput:
+def testMatrix() -> DataFrame:
+    df = DataFrame(
+        columns=[
+            "input",
+            "voting_scheme",
+            "happiness_measure",
+            "happiness_values",
+            "risk_measure",
+            "risk_values",
+        ]
+    )
     testScenarios = loadData()
     votingSchemes = [
         NamedVotingScheme("Anti-plurality voting", anti_plurality_voting),
@@ -89,8 +140,6 @@ def testMatrix() -> TestMatrixOutput:
         NamedRiskMeasure("Probability of Strategic Voting", probStrategicVoting),
     ]
 
-    outputs: TestMatrixOutput = []
-
     for vs in votingSchemes:
         for hm in happiness_measures:
             for rm in risk_measures:
@@ -100,19 +149,25 @@ def testMatrix() -> TestMatrixOutput:
                     tcCA = np.char.array(tc)
                     result = btva.analyze(tcCA, vs.votingScheme)
 
-                    entry = (tcCA, vs, hm, rm, result[0], result[1])
-                    outputs.append(entry)
-                    print(entry)
-
-    return outputs
+                    df.loc[len(df)] = {  # type:ignore
+                        "input": tc,
+                        "voting_scheme": vs.label,
+                        "happiness_measure": hm.label,
+                        "happiness_values": result[0],
+                        "risk_measure": rm.label,
+                        "risk_values": [0.0] * len(result[0]),
+                    }
+    return df
 
 
 def main():
-    outputs = testMatrix()
+    df = testMatrix()
+
+    df.to_csv("testOutput.csv", index=False)
 
     with open("testOutput.pkl", "wb") as file:
         # Serialize the object and write it to the file
-        pickle.dump(outputs, file)
+        pickle.dump(df, file)
 
 
 if __name__ == "__main__":
