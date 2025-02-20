@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List
-from itertools import product
+from itertools import product, combinations
 
 from BTVA import VotingScheme
 
@@ -182,3 +182,109 @@ def probStrategicVoting(
                 break
 
     return count / n
+
+def WinnerChangeRisk(
+    voter_preference: np.ndarray,
+    voting_scheme: VotingScheme | None,
+    _: List[float],
+    strategic_options: list
+) -> float:
+    """
+    Calculate the proportion of strategic votes that successfully change the winner.
+    
+    Args:
+        voter_preference (np.ndarray): Original preference rankings for each voter
+        voting_scheme: Function that returns a dict mapping candidates to scores.
+        strategic_options (list): List of possible strategic options for each voter,
+                                where each option is a tuple (preference_ranking, expected_happiness)
+
+    Returns:
+        - overall_max_risk: Maximum risk score (float between 0 and 1)
+
+    """
+    if not strategic_options:
+        return 0.0
+
+    true_results = voting_scheme(voter_preference)
+    true_winner = min(true_results.items(), key=lambda x: (-x[1], x[0]))[0]
+    #true_leaderboard = [name for name, _ in sorted(true_results.items(), key=lambda item: (-item[1], item[0]))]
+    
+    risks = []
+    for voter_idx, voter_opts in enumerate(strategic_options):
+        successful = 0
+        total = 0
+        modified_prefs = voter_preference.copy()
+        
+        for opt in voter_opts:
+            total += 1
+            modified_prefs[:, voter_idx] = opt[0]
+            new_results = voting_scheme(modified_prefs)
+            new_winner = min(new_results.items(), key=lambda x: (-x[1], x[0]))[0]
+            #new_leaderboard = [name for name, _ in sorted(new_results.items(), key=lambda item: (-item[1], item[0]))]
+            
+            if new_winner != true_winner:
+            #if new_leaderboard != true_leaderboard:
+                successful += 1
+                continue
+        risks.append(successful / total if total > 0 else 0.0)
+    
+    return max(risks)
+
+def CollusionChangeRisk(
+    voter_preference: np.ndarray,
+    voting_scheme: VotingScheme | None,
+    _: List[float],
+    strategic_options: list
+) -> float:
+    """
+    Calculate the proportion of strategic manipulations (single-voter or two-voter collusions) that successfully change the winner.
+
+    Args:
+    voter_preference (np.ndarray): Original preference rankings for each voter.
+    voting_scheme (callable): Function that returns a dict mapping candidates to scores.
+    strategic_options (list): List of possible strategic options for each voter, 
+                            where each option is a tuple (preference_ranking, expected_happiness).
+
+    Returns:
+    collusion_risk (float): The proportion of successful manipulations (0 to 1) that change the winner.
+    """
+    if not strategic_options:
+        return 0.0
+    
+    true_results = voting_scheme(voter_preference)
+    true_winner = min(true_results.items(), key=lambda x: (-x[1], x[0]))[0]
+
+    def test_manipulation(voter_indices, strategic_choices):
+        modified_prefs = voter_preference.copy()
+        for voter_idx, choice in zip(voter_indices, strategic_choices):
+            modified_prefs[:, voter_idx] = choice[0]
+        
+        new_results = voting_scheme(modified_prefs)
+        new_winner = min(new_results.items(), key=lambda x: (-x[1], x[0]))[0]
+        return new_winner != true_winner
+    
+    successful_attempts = 0
+    total_attempts = 0
+
+    # 1. Single Voter Manipulation
+    for voter_idx, options in enumerate(strategic_options):
+
+        for choice in options:
+            total_attempts += 1
+            if test_manipulation([voter_idx], [choice]):
+                successful_attempts += 1
+
+    # 2. Two-Voter Collusion
+    for voter_indices in combinations(range(len(strategic_options)), 2):
+
+        voter_options = [strategic_options[i] for i in voter_indices]
+        choices_for_voter_1 = [choice for choice, _ in voter_options[0]]
+        choices_for_voter_2 = [choice for choice, _ in voter_options[1]]
+
+        for coalition_choices in combinations(choices_for_voter_1 + choices_for_voter_2, 2):
+            total_attempts += 1
+            if test_manipulation(voter_indices, coalition_choices):
+                successful_attempts += 1
+
+    collusion_risk = successful_attempts / total_attempts if total_attempts > 0 else 0.0
+    return collusion_risk
