@@ -44,13 +44,15 @@ class ATVA3:
     def analyze(
             self,
             voter_preference: npchar,
-            voting_scheme: VotingScheme
+            voting_scheme: VotingScheme,
+            sim_params: Dict
         ) -> ATVA3_Output:
         """
         Analyze the voting preference of a group of voters using a specific voting scheme.
 
         :param voter_preference: An array of shape (m,n), where m is the number of candidates and n is the number of voters.
         :param voting_scheme: The voting scheme to use.
+        :param sim_params: simulation parameters.
         :return: a tuple containing the following:
                  - Reconstructed voter preferences from election leaderbord (npchar)
                  - Non-strategic voting outcome (dict)
@@ -59,18 +61,36 @@ class ATVA3:
                  - For each voter a (possibly empty) set of strategic-voting options (list[set])
                  - Overall risk of strategic voting for the given input (float)
         """
+        m, n = voter_preference.shape
+
         # Reconstruct voter preference based on leaderboard of true outcome
-        reconstruct_preference = self.mcmc_reconstruct(
-            voter_preference=voter_preference,
-            voting_scheme=voting_scheme,
-            num_simulations=7000,
-            window_size=50,
-            stable_window=1000,
-            target_max_acceptance=0.2
-        )
+        attempt = 0
+        reconstruct_preference = np.empty((m, n), dtype="U1")
+        while self._is_valid_preference_matrix(reconstruct_preference) != True:
+            attempt *= 1
+            reconstruct_preference = self.preference_reconstruct(
+                voter_preference=voter_preference,
+                voting_scheme=voting_scheme,
+                num_simulations=sim_params['num_simulations'],
+                window_size=sim_params['window_size'],
+                stable_window=sim_params['stable_window'],
+                target_acceptance=sim_params['target_acceptance'],
+                improvement_threshold=sim_params['improvement_threshold']
+            )
+            
+            if attempt > 3:
+                print(f"Failed to reconstruct polling for {voting_scheme.__name__} after 3 attempts.")
+                empty_preference = np.empty((m, n), dtype="U1")
+                return (
+                    empty_preference,           # empty preference matrix
+                    {},                         # empty outcome dictionary
+                    [0.0] * n,                 # zero happiness for each voter
+                    0.0,                       # zero overall happiness
+                    [set() for _ in range(n)], # empty strategic options for each voter
+                    0.0                        # zero risk
+                )
 
         # format reconstruct outcome
-        m, n = voter_preference.shape
         temp = np.empty((m, n), dtype="U1")
         remaining_columns = [col for col in reconstruct_preference.T]
         for i, col in enumerate(voter_preference.T):
@@ -139,14 +159,14 @@ class ATVA3:
 
         return reconstruct_preference, reconstruct_outcome, individual_happiness, overall_happiness, strategic_options, risk
     
-    def mcmc_reconstruct(
+    def preference_reconstruct(
             self,
             voter_preference: npchar,
             voting_scheme: VotingScheme,
             num_simulations: int = 1000,
             window_size: int = 50,
             stable_window: int = 100,
-            target_max_acceptance: float = 0.3,
+            target_acceptance: float = 0.3,
             improvement_threshold: float = 0.01
         ) -> npchar:
         """
@@ -226,7 +246,7 @@ class ATVA3:
             acceptance_window.append(accepted)
         
         initial_acceptance_rate = acceptance_rate(acceptance_window)
-        if initial_acceptance_rate <= target_max_acceptance:
+        if initial_acceptance_rate <= target_acceptance:
             stability = preference_stability(current_preference, preference_history)
             return current_preference, stability
         
@@ -246,7 +266,7 @@ class ATVA3:
                 acceptance_prob = np.exp(score_diff / temperature)
                 
                 current_acceptance_rate = acceptance_rate(acceptance_window)
-                if current_acceptance_rate > target_max_acceptance:
+                if current_acceptance_rate > target_acceptance:
                     acceptance_prob *= 0.5
                 
                 accepted = score_diff > 0 or np.random.rand() < acceptance_prob
@@ -260,19 +280,19 @@ class ATVA3:
                 
                 acceptance_window.append(accepted)
                 if len(acceptance_window) == window_size:
-                    if current_acceptance_rate <= target_max_acceptance and current_score >= best_score * (1 - improvement_threshold):
+                    if current_acceptance_rate <= target_acceptance and current_score >= best_score * (1 - improvement_threshold):
                         return current_preference
                     
                     if phase == 1 and current_score == len(leaderboard):
                         phase += 1
                         break
-                    elif phase == 2 and current_acceptance_rate <= target_max_acceptance:
+                    elif phase == 2 and current_acceptance_rate <= target_acceptance:
                         phase += 1
                         break
                     elif phase == 3 and stability_counter >= stable_window:
                         return best_preference
                     
-                    if current_acceptance_rate <= target_max_acceptance:
+                    if current_acceptance_rate <= target_acceptance:
                         stability_counter += 1
                     else:
                         stability_counter = 0
@@ -280,21 +300,35 @@ class ATVA3:
             phase += 1
         
         return best_preference
+    
+    def _is_valid_preference_matrix(self, matrix):
+        if not isinstance(matrix, np.ndarray) or matrix.dtype.kind != 'U':
+            return False
+        
+        if matrix.ndim != 2:
+            return False
+        
+        for col in range(matrix.shape[1]):
+            if len(set(matrix[:, col])) != matrix.shape[0]:
+                return False
+        
+        return True
 
 def main():
     voter_preference = np.char.array(
-        # voters:   1    2    3    4
+        # voters:   1    2    3    4    5    6
         [
-            ["B", "A", "D", "C", "C", "D", "B"],  # 1st preference
-            ["C", "C", "B", "D", "D", "A", "A"],  # 2nd preference
-            ["A", "D", "A", "A", "A", "C", "D"],  # 3rd preference
-            ["D", "B", "C", "B", "B", "B", "C"],  # 4th preference
+            ["B", "A", "D", "E", "E", "D", "B"],  # 1st preference
+            ["C", "C", "E", "D", "D", "A", "A"],  # 2nd preference
+            ["A", "E", "A", "A", "A", "C", "E"],  # 3rd preference
+            ["D", "B", "C", "B", "B", "E", "D"],  # 4th preference
+            ["E", "D", "B", "C", "C", "B", "C"],
         ]  
     )
 
     print("Original preferences:")
     print(voter_preference)
-    true_outome = {k: v for k, v in sorted(borda_count_voting(voter_preference).items(), key=lambda item: item[1], reverse=True)}
+    true_outome = {k: v for k, v in sorted(plurality_voting(voter_preference).items(), key=lambda item: item[1], reverse=True)}
     print(f"{true_outome}")
 
     test = ATVA3(
@@ -303,7 +337,7 @@ def main():
 
     reconstruct_preference, outcome, happiness, _, _, risk = test.analyze(
         voter_preference=voter_preference,
-        voting_scheme=borda_count_voting
+        voting_scheme=plurality_voting
     )
     print("\nReconstructed preferences:")
     print(reconstruct_preference)
