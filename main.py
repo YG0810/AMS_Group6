@@ -1,5 +1,6 @@
 import numpy as np
 from BTVA import BTVA
+from ATVA import ATVA
 from happiness_measure import NDCG
 from risk_measure import FlipRewardRisk, JointFlipRewardRisk, probStrategicVoting
 from voting_schemes import plurality_voting
@@ -26,3 +27,13 @@ print(risk)
 assert sum(happiness) == overall_happiness
 
 print(overall_happiness)
+
+# Advanced Analyze for the voting preferences
+atva = ATVA()
+outcome, happiness, overall_happiness, collusion_options, risk = atva.analyze(voter_preference, plurality_voting)
+
+print("Outcome:", outcome)
+print("Happiness:", happiness)
+print("Overall Happiness:", overall_happiness)
+print("Collusion Options:", collusion_options)
+print("Collusion Risk:", risk)
