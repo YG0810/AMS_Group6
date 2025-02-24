@@ -2,9 +2,17 @@ from math import log2
 from numpy import chararray as npchar
 import numpy as np
 
+from Types import (
+    VoterPreference,
+    VotingScheme,
+    CandidateResults,
+    HappinessMeasure,
+    RiskMeasure,
+)  # NOQA
+
 
 def createRanking(
-    preferences: npchar,
+    preferences: VoterPreference,
     outcome: list[str],
     preferenceWeights: list[float],
     distanceWeights: list[float],
@@ -34,7 +42,7 @@ def DCG(ranking: list[float]):
 
 
 def NDCG(
-    preferences: npchar,
+    preferences: VoterPreference,
     outcome: list[str],
     preferenceWeights: list[float] | None = None,
     distanceWeights: list[float] | None = None,
@@ -75,10 +83,10 @@ def NDCG(
 
 
 def KendallTau(
-    preferences: npchar,
+    preferences: VoterPreference,
     outcome: list[str],
     preferenceWeights: list[float] | None = None,
-    _: list[float] | None = None
+    _: list[float] | None = None,
 ) -> float:
 
     # No weights specified, let's use weights of 1 for everything
@@ -95,43 +103,50 @@ def KendallTau(
             concordantPairs += preferenceWeights[i]
 
     # Calculate the Kendall Tau measure
-    tau = (concordantPairs - (sum(preferenceWeights) - concordantPairs)) / sum(preferenceWeights)
+    tau = (concordantPairs - (sum(preferenceWeights) - concordantPairs)) / sum(
+        preferenceWeights
+    )
 
     # Normalize to [0, 1]
     return (tau + 1) / 2
 
-def BubbleSortDistance(preferences: npchar,
-                        outcome: list[str],
-                        preferenceWeights: list[float] | None = None,
-                        _: list[float] | None = None) -> float:
+
+def BubbleSortDistance(
+    preferences: VoterPreference,
+    outcome: list[str],
+    preferenceWeights: list[float] | None = None,
+    _: list[float] | None = None,
+) -> float:
     n = len(preferences)
-    
+
     # No weights specified, let's use weights of 1 for everything
     if preferenceWeights is None:
         preferenceWeights = [1 for _ in preferences]
     elif len(preferenceWeights) < len(preferences):
         paddingAmount = len(preferences) - len(preferenceWeights)
         preferenceWeights += [0 for _ in range(paddingAmount)]
-    
-    i, j = np.meshgrid(np.arange(n), np.arange(n))  
-    a = np.argsort(outcome)  
-    b = np.argsort(preferences)  
-    
+
+    i, j = np.meshgrid(np.arange(n), np.arange(n))
+    a = np.argsort(outcome)
+    b = np.argsort(preferences)
+
     # Calculate weighted disorder
     weighted_disorder = (
         np.logical_or(
-            np.logical_and(a[i] < a[j], b[i] > b[j]),  
-            np.logical_and(a[i] > a[j], b[i] < b[j])
-        ) * np.array(preferenceWeights)[i]  
+            np.logical_and(a[i] < a[j], b[i] > b[j]),
+            np.logical_and(a[i] > a[j], b[i] < b[j]),
+        )
+        * np.array(preferenceWeights)[i]
     ).sum()
-    
+
     return 1 - (weighted_disorder / (n * (n - 1)))
 
+
 def get_happiness(
-    voter_preference: list,
+    voter_preference: VoterPreference,
     voting_outcome: list,
-    preference_weights: list = None,
-    distance_weights: list = None,
+    preference_weights: list | None = None,
+    distance_weights: list | None = None,
 ):
     """
     Calculate the happiness of a voter given their preference and the voting outcome.
@@ -164,6 +179,7 @@ def get_happiness(
         )
 
     return happiness_score
+
 
 # Test code
 def testPerfectChoices(n: int, k: int):

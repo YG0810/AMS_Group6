@@ -1,23 +1,16 @@
-from collections.abc import Callable
-from typing import Any
 import numpy as np
-from numpy import chararray as npchar
 from itertools import permutations
-
-VotingScheme = Callable[[npchar], dict[str, int]]
-
-# (voter_preference, outcome, weights) -> float
-HappinessMeasure = Callable[
-    [npchar, list[str], list[float] | None, list[float] | None], float
-]
-
-# (voter_preference,voting_scheme, individual_happiness, strategic_options) -> float
-RiskMeasure = Callable[[npchar, VotingScheme, list[float], list[Any]], float]
-
+from Types import (
+    VoterPreference,
+    VotingScheme,
+    CandidateResults,
+    HappinessMeasure,
+    RiskMeasure,
+)
 
 # (non-strategic voting outcome, voter happiness, overall happiness, voting options per voter, overall risk)
 BTVA_Output = tuple[
-    dict[str, int], list[float], float, list[set[tuple[list[str], float]]], float
+    CandidateResults, list[float], float, list[set[tuple[list[str], float]]], float
 ]
 
 
@@ -38,7 +31,7 @@ class BTVA:
 
     def analyze(
         self,
-        voter_preference: npchar,
+        voter_preference: VoterPreference,
         voting_scheme: VotingScheme,
     ) -> BTVA_Output:
         """

@@ -1,14 +1,15 @@
 import numpy as np
-from typing import List
 from itertools import product, combinations
-
-from BTVA import VotingScheme
+from Types import (
+    VoterPreference,
+    VotingScheme,
+)
 
 
 def FlipRewardRisk(
-    voter_preference: np.ndarray,
+    voter_preference: VoterPreference,
     _: VotingScheme | None,
-    individual_happiness: List[float],
+    individual_happiness: list[float],
     strategic_options: list,
 ) -> float:
     """
@@ -42,7 +43,7 @@ def FlipRewardRisk(
         ValueError: If p is not in the range [1.3, 1.7]
     """
 
-    p = 1.7 # define manually
+    p = 1.7  # define manually
     if not 1.3 <= p <= 1.7:
         raise ValueError(f"Parameter p must be in range [1.3, 1.7], got {p}")
 
@@ -51,12 +52,12 @@ def FlipRewardRisk(
         if not options:
             risks.append(set())
             continue
-    
+
         risks4i = []
         for pref in options:
             preference, happiness = pref
             norm_dist = inversion_ranking_distance(
-                voter_preference[:, i], list(preference)
+                np.char.array(voter_preference[:, i]), list(preference)
             )
             delta_happ = abs(happiness - individual_happiness[i])
             score = np.tanh(delta_happ / np.log(norm_dist ** (p - 1) + 1))
@@ -71,14 +72,15 @@ def FlipRewardRisk(
     # return risks, overall_max_risk
     return overall_max_risk
 
+
 def JointFlipRewardRisk(
-    voter_preference: np.ndarray,
+    voter_preference: VoterPreference,
     _: VotingScheme | None,
-    individual_happiness: List[float],
-    strategic_options: list
+    individual_happiness: list[float],
+    strategic_options: list,
 ) -> float:
     """
-    Computes the joint likelihood of strategic voting by evaluating all possible 
+    Computes the joint likelihood of strategic voting by evaluating all possible
     combinations of honest/strategic voting among voters.
 
     Args:
@@ -92,49 +94,52 @@ def JointFlipRewardRisk(
 
     """
 
-    p = 1.7 # define manually
+    p = 1.7  # define manually
     if not 1.3 <= p <= 1.7:
         raise ValueError(f"Parameter p must be in range [1.3, 1.7], got {p}")
-    
+
     individual_risks = []
     for i, options in enumerate(strategic_options):
         if not options:
             individual_risks.append(0.0)
             continue
-            
+
         risks4i = []
         for pref in options:
             preference, happiness = pref
             norm_dist = inversion_ranking_distance(
-                voter_preference[:, i], list(preference)
+                np.char.array(voter_preference[:, i]), list(preference)
             )
             delta_happ = abs(happiness - individual_happiness[i])
             score = np.tanh(delta_happ / np.log(norm_dist ** (p - 1) + 1))
             risks4i.append(score)
-            
+
         individual_risks.append(max(risks4i))
-    
+
     n_voters = len(individual_risks)
     scenarios = list(product([0, 1], repeat=n_voters))
-    
+
     overall_max_risk = 0.0
     for scenario in scenarios:
-        if  all(x == 0 for x in scenario): # all voters vote honestly
-            continue 
+        if all(x == 0 for x in scenario):  # all voters vote honestly
+            continue
 
         prob = 1.0
         for voter_idx, is_strategic in enumerate(scenario):
-            if individual_risks[voter_idx] == 0.0: # a voter has individual risk 0.0, hence votes honestly guaranteed
+            if (
+                individual_risks[voter_idx] == 0.0
+            ):  # a voter has individual risk 0.0, hence votes honestly guaranteed
                 continue
             if is_strategic:
                 prob *= individual_risks[voter_idx]
             else:
-                prob *= (1 - individual_risks[voter_idx])
+                prob *= 1 - individual_risks[voter_idx]
         overall_max_risk = max(overall_max_risk, prob)
-    
+
     return overall_max_risk
 
-def inversion_ranking_distance(base_pref: np.ndarray, option_pref: list) -> float:
+
+def inversion_ranking_distance(base_pref: VoterPreference, option_pref: list) -> float:
     """
     Computes the normalized minimal rearrangement distance between two rankings based on the number of
     displacements required to transform one ranking into another. The result is normalized between 0 and 1,
@@ -166,6 +171,7 @@ def inversion_ranking_distance(base_pref: np.ndarray, option_pref: list) -> floa
     max_inversions = (n * (n - 1)) // 2
     return inversions / max_inversions if max_inversions > 0 else 0.0
 
+
 def probStrategicVoting(
     _: np.ndarray,
     __: VotingScheme | None,
@@ -183,15 +189,16 @@ def probStrategicVoting(
 
     return count / n
 
+
 def WinnerChangeRisk(
-    voter_preference: np.ndarray,
-    voting_scheme: VotingScheme | None,
-    _: List[float],
-    strategic_options: list
+    voter_preference: VoterPreference,
+    voting_scheme: VotingScheme,
+    _: list[float],
+    strategic_options: list,
 ) -> float:
     """
     Calculate the proportion of strategic votes that successfully change the winner.
-    
+
     Args:
         voter_preference (np.ndarray): Original preference rankings for each voter
         voting_scheme: Function that returns a dict mapping candidates to scores.
@@ -207,34 +214,35 @@ def WinnerChangeRisk(
 
     true_results = voting_scheme(voter_preference)
     true_winner = min(true_results.items(), key=lambda x: (-x[1], x[0]))[0]
-    #true_leaderboard = [name for name, _ in sorted(true_results.items(), key=lambda item: (-item[1], item[0]))]
-    
+    # true_leaderboard = [name for name, _ in sorted(true_results.items(), key=lambda item: (-item[1], item[0]))]
+
     risks = []
     for voter_idx, voter_opts in enumerate(strategic_options):
         successful = 0
         total = 0
         modified_prefs = voter_preference.copy()
-        
+
         for opt in voter_opts:
             total += 1
             modified_prefs[:, voter_idx] = opt[0]
             new_results = voting_scheme(modified_prefs)
             new_winner = min(new_results.items(), key=lambda x: (-x[1], x[0]))[0]
-            #new_leaderboard = [name for name, _ in sorted(new_results.items(), key=lambda item: (-item[1], item[0]))]
-            
+            # new_leaderboard = [name for name, _ in sorted(new_results.items(), key=lambda item: (-item[1], item[0]))]
+
             if new_winner != true_winner:
-            #if new_leaderboard != true_leaderboard:
+                # if new_leaderboard != true_leaderboard:
                 successful += 1
                 continue
         risks.append(successful / total if total > 0 else 0.0)
-    
+
     return max(risks)
 
+
 def CollusionChangeRisk(
-    voter_preference: np.ndarray,
-    voting_scheme: VotingScheme | None,
-    _: List[float],
-    strategic_options: list
+    voter_preference: VoterPreference,
+    voting_scheme: VotingScheme,
+    _: list[float],
+    strategic_options: list,
 ) -> float:
     """
     Calculate the proportion of strategic manipulations (single-voter or two-voter collusions) that successfully change the winner.
@@ -242,7 +250,7 @@ def CollusionChangeRisk(
     Args:
     voter_preference (np.ndarray): Original preference rankings for each voter.
     voting_scheme (callable): Function that returns a dict mapping candidates to scores.
-    strategic_options (list): List of possible strategic options for each voter, 
+    strategic_options (list): List of possible strategic options for each voter,
                             where each option is a tuple (preference_ranking, expected_happiness).
 
     Returns:
@@ -250,7 +258,7 @@ def CollusionChangeRisk(
     """
     if not strategic_options:
         return 0.0
-    
+
     true_results = voting_scheme(voter_preference)
     true_winner = min(true_results.items(), key=lambda x: (-x[1], x[0]))[0]
 
@@ -258,11 +266,11 @@ def CollusionChangeRisk(
         modified_prefs = voter_preference.copy()
         for voter_idx, choice in zip(voter_indices, strategic_choices):
             modified_prefs[:, voter_idx] = choice[0]
-        
+
         new_results = voting_scheme(modified_prefs)
         new_winner = min(new_results.items(), key=lambda x: (-x[1], x[0]))[0]
         return new_winner != true_winner
-    
+
     successful_attempts = 0
     total_attempts = 0
 
@@ -281,7 +289,9 @@ def CollusionChangeRisk(
         choices_for_voter_1 = [choice for choice, _ in voter_options[0]]
         choices_for_voter_2 = [choice for choice, _ in voter_options[1]]
 
-        for coalition_choices in combinations(choices_for_voter_1 + choices_for_voter_2, 2):
+        for coalition_choices in combinations(
+            choices_for_voter_1 + choices_for_voter_2, 2
+        ):
             total_attempts += 1
             if test_manipulation(voter_indices, coalition_choices):
                 successful_attempts += 1

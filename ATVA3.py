@@ -1,28 +1,26 @@
-from collections.abc import Callable
 from collections import deque
-from typing import Any, Dict, Tuple
 import numpy as np
 from numpy import chararray as npchar
 from itertools import permutations
+from Types import (
+    VotingScheme,
+    HappinessMeasure,
+    RiskMeasure,
+    VoterPreference
+)
 
-from happiness_measure import *
-from risk_measure import *
-from voting_schemes import *
-
-VotingScheme = Callable[[npchar], dict[str, int]]
-
-# (voter_preference, outcome, weights) -> float
-HappinessMeasure = Callable[
-    [npchar, list[str], list[float] | None, list[float] | None], float
-]
-
-# (voter_preference,voting_scheme, individual_happiness, strategic_options) -> float
-RiskMeasure = Callable[[npchar, VotingScheme, list[float], list[Any]], float]
-
+from happiness_measure import *  # NOQA
+from risk_measure import *  # NOQA
+from voting_schemes import *  # NOQA
 
 # (reconstructed voter preference, non-strategic voting outcome, voter happiness, overall happiness, voting options per voter, overall risk)
 ATVA3_Output = tuple[
-    npchar, dict[str, int], list[float], float, list[set[tuple[list[str], float]]], float
+    VoterPreference,
+    dict[str, int],
+    list[float],
+    float,
+    list[set[tuple[list[str], float]]],
+    float,
 ]
 
 
@@ -30,7 +28,7 @@ class ATVA3:
     def __init__(
         self,
         happiness_measure: HappinessMeasure = lambda _, __, ___, ____: np.nan,
-        risk_measure: RiskMeasure = lambda _, __, ___, ____: np.nan
+        risk_measure: RiskMeasure = lambda _, __, ___, ____: np.nan,
     ):
         """
         Create a Basic Tactical Voting Analyst (BTVA) object.
@@ -42,11 +40,8 @@ class ATVA3:
         self.risk_measure = risk_measure
 
     def analyze(
-            self,
-            voter_preference: npchar,
-            voting_scheme: VotingScheme,
-            sim_params: Dict
-        ) -> ATVA3_Output:
+        self, voter_preference: npchar, voting_scheme: VotingScheme, sim_params: dict
+    ) -> ATVA3_Output:
         """
         Analyze the voting preference of a group of voters using a specific voting scheme.
 
@@ -66,28 +61,31 @@ class ATVA3:
         # Reconstruct voter preference based on leaderboard of true outcome
         attempt = 0
         reconstruct_preference = np.empty((m, n), dtype="U1")
-        while self._is_valid_preference_matrix(reconstruct_preference) != True:
+        while not self._is_valid_preference_matrix(reconstruct_preference):
             attempt *= 1
             reconstruct_preference = self.preference_reconstruct(
                 voter_preference=voter_preference,
                 voting_scheme=voting_scheme,
-                num_simulations=sim_params['num_simulations'],
-                window_size=sim_params['window_size'],
-                stable_window=sim_params['stable_window'],
-                target_acceptance=sim_params['target_acceptance'],
-                improvement_threshold=sim_params['improvement_threshold']
+                num_simulations=sim_params["num_simulations"],
+                window_size=sim_params["window_size"],
+                stable_window=sim_params["stable_window"],
+                target_acceptance=sim_params["target_acceptance"],
+                improvement_threshold=sim_params["improvement_threshold"],
             )
-            
+
             if attempt > 3:
-                print(f"Failed to reconstruct polling for {voting_scheme.__name__} after 3 attempts.")
-                empty_preference = np.empty((m, n), dtype="U1")
+                print(
+                    f"Failed to reconstruct polling for {voting_scheme.__name__} after 3 attempts."
+                )
+                empty_preference = np.char.array(np.empty((m, n), dtype="U1"))
                 return (
-                    empty_preference,           # empty preference matrix
-                    {},                         # empty outcome dictionary
-                    [0.0] * n,                 # zero happiness for each voter
-                    0.0,                       # zero overall happiness
-                    [set() for _ in range(n)], # empty strategic options for each voter
-                    0.0                        # zero risk
+                    empty_preference,  # empty preference matrix
+                    {},  # empty outcome dictionary
+                    [0.0] * n,  # zero happiness for each voter
+                    0.0,  # zero overall happiness
+                    # empty strategic options for each voter
+                    [set() for _ in range(n)],
+                    0.0,  # zero risk
                 )
 
         # format reconstruct outcome
@@ -100,20 +98,23 @@ class ATVA3:
                     remaining_columns.pop(j)
                     break
         for i in range(n):
-            if np.all(temp[:, i] == ''):  
+            if np.all(temp[:, i] == ""):
                 temp[:, i] = remaining_columns.pop(0)
-        reconstruct_preference = temp
+        reconstruct_preference = np.char.array(temp)
 
         reconstruct_outcome = voting_scheme(reconstruct_preference)
         reconstruct_outcome = {
             k: v
-            for k, v in sorted(reconstruct_outcome.items(), key=lambda item: item[1], reverse=True)
+            for k, v in sorted(
+                reconstruct_outcome.items(), key=lambda item: item[1], reverse=True
+            )
         }
 
         # Happiness levels
         individual_happiness = [
             self.happiness_measure(
-                reconstruct_preference[:, i], list(reconstruct_outcome.keys())  # type:ignore
+                reconstruct_preference[:, i],
+                list(reconstruct_outcome.keys()),  # type:ignore
             )
             for i in range(n)
         ]
@@ -157,20 +158,27 @@ class ATVA3:
             strategic_options,
         )
 
-        return reconstruct_preference, reconstruct_outcome, individual_happiness, overall_happiness, strategic_options, risk
-    
+        return (
+            reconstruct_preference,
+            reconstruct_outcome,
+            individual_happiness,
+            overall_happiness,
+            strategic_options,
+            risk,
+        )
+
     def preference_reconstruct(
-            self,
-            voter_preference: npchar,
-            voting_scheme: VotingScheme,
-            num_simulations: int = 1000,
-            window_size: int = 50,
-            stable_window: int = 100,
-            target_acceptance: float = 0.3,
-            improvement_threshold: float = 0.01
-        ) -> npchar:
+        self,
+        voter_preference: npchar,
+        voting_scheme: VotingScheme,
+        num_simulations: int = 1000,
+        window_size: int = 50,
+        stable_window: int = 100,
+        target_acceptance: float = 0.3,
+        improvement_threshold: float = 0.01,
+    ) -> npchar:
         """
-        Perform Markov Chain Monte Carlo (MCMC) reconstruction of voter preferences. The voter preferences are supposed to be 
+        Perform Markov Chain Monte Carlo (MCMC) reconstruction of voter preferences. The voter preferences are supposed to be
         reconstructed based on the leaderboard (as typically available as polling data prior to elections) of the candidates.
 
         :param voter_preference: An array of shape (m, n), where m is the number of candidates and n is the number of voters.
@@ -182,16 +190,23 @@ class ATVA3:
         :param improvement_threshold: The threshold to determine convergence (default: 0.01).
         :return: An array representing the reconstructed voter preference matrix (npchar).
         """
-        
+
         m, n = voter_preference.shape
-        
+
         # leaderbord from deterministic voting outcome, not "visible" to ATVA-3
         true_outcome = voting_scheme(voter_preference)
         true_outcome = {
             k: v
-            for k, v in sorted(true_outcome.items(), key=lambda item: item[1], reverse=True)
+            for k, v in sorted(
+                true_outcome.items(), key=lambda item: item[1], reverse=True
+            )
         }
-        leaderboard = [name for name, _ in sorted(true_outcome.items(), key=lambda item: (-item[1], item[0]))]
+        leaderboard = [
+            name
+            for name, _ in sorted(
+                true_outcome.items(), key=lambda item: (-item[1], item[0])
+            )
+        ]
 
         def initialize_preference():
             pref = np.empty((m, n), dtype="U1")
@@ -203,16 +218,28 @@ class ATVA3:
 
         def reconstruct_match(voter_preference):
             votes_distribution = voting_scheme(voter_preference)
-            simulated_leaderboard = sorted(votes_distribution, key=votes_distribution.get, reverse=True)
+            simulated_leaderboard = sorted(
+                votes_distribution, key=votes_distribution.get, reverse=True
+            )
             return sum(1 for a, b in zip(leaderboard, simulated_leaderboard) if a == b)
-        
+
         def preference_stability(current_pref, history):
             if len(history) < 2:
                 return 0.0
-            return np.mean([
-                np.mean([KendallTau(preferences=current_pref[:, v], outcome=hist_pref[:, v]) for v in range(n)])
-                for hist_pref in history
-            ])
+            return np.mean(
+                [
+                    np.mean(
+                        [
+                            KendallTau(
+                                preferences=current_pref[:,
+                                                         v], outcome=hist_pref[:, v]
+                            )
+                            for v in range(n)
+                        ]
+                    )
+                    for hist_pref in history
+                ]
+            )
 
         def acceptance_rate(window):
             return sum(window) / len(window) if window else 1.0
@@ -221,68 +248,81 @@ class ATVA3:
         best_score = -1
         current_preference = initialize_preference()
         current_score = reconstruct_match(current_preference)
-        
+
         acceptance_window = deque(maxlen=window_size)
         preference_history = deque(maxlen=stable_window)
         stability_counter = 0
         phase = 1
-        
+
         for _ in range(window_size):
             new_preference = current_preference.copy()
             v = np.random.randint(n)
             i, j = np.random.choice(m, 2, replace=False)
-            new_preference[i, v], new_preference[j, v] = new_preference[j, v], new_preference[i, v]
-            
+            new_preference[i, v], new_preference[j, v] = (
+                new_preference[j, v],
+                new_preference[i, v],
+            )
+
             new_score = reconstruct_match(new_preference)
-            accepted = new_score > current_score or np.random.rand() < np.exp((new_score - current_score))
-            
+            accepted = new_score > current_score or np.random.rand() < np.exp(
+                (new_score - current_score)
+            )
+
             if accepted:
                 current_preference = new_preference
                 current_score = new_score
                 if current_score > best_score:
                     best_score = current_score
                     best_preference = current_preference.copy()
-                    
+
             acceptance_window.append(accepted)
-        
+
         initial_acceptance_rate = acceptance_rate(acceptance_window)
         if initial_acceptance_rate <= target_acceptance:
-            stability = preference_stability(current_preference, preference_history)
+            stability = preference_stability(
+                current_preference, preference_history)
             return current_preference, stability
-        
+
         while phase <= 3:
             for step in range(num_simulations):
                 new_preference = current_preference.copy()
                 v = np.random.randint(n)
                 i, j = np.random.choice(m, 2, replace=False)
-                new_preference[i, v], new_preference[j, v] = new_preference[j, v], new_preference[i, v]
+                new_preference[i, v], new_preference[j, v] = (
+                    new_preference[j, v],
+                    new_preference[i, v],
+                )
                 new_score = reconstruct_match(new_preference)
-                
+
                 # Adaptive temperature based on phase
-                temperature = max(0.1, 1.0 - (phase * step) / (3 * num_simulations))
-                
+                temperature = max(
+                    0.1, 1.0 - (phase * step) / (3 * num_simulations))
+
                 # Modified acceptance probability calculation
                 score_diff = new_score - current_score
                 acceptance_prob = np.exp(score_diff / temperature)
-                
+
                 current_acceptance_rate = acceptance_rate(acceptance_window)
                 if current_acceptance_rate > target_acceptance:
                     acceptance_prob *= 0.5
-                
+
                 accepted = score_diff > 0 or np.random.rand() < acceptance_prob
                 if accepted:
                     current_preference = new_preference
                     current_score = new_score
-                    
+
                     if current_score > best_score:
                         best_score = current_score
                         best_preference = current_preference.copy()
-                
+
                 acceptance_window.append(accepted)
                 if len(acceptance_window) == window_size:
-                    if current_acceptance_rate <= target_acceptance and current_score >= best_score * (1 - improvement_threshold):
+                    if (
+                        current_acceptance_rate <= target_acceptance
+                        and current_score >= best_score * (1 - improvement_threshold)
+                    ):
                         return current_preference
-                    
+
                     if phase == 1 and current_score == len(leaderboard):
                         phase += 1
                         break
@@ -291,28 +331,29 @@ class ATVA3:
                         break
                     elif phase == 3 and stability_counter >= stable_window:
                         return best_preference
-                    
+
                     if current_acceptance_rate <= target_acceptance:
                         stability_counter += 1
                     else:
                         stability_counter = 0
-            
+
             phase += 1
-        
+
         return best_preference
-    
+
     def _is_valid_preference_matrix(self, matrix):
-        if not isinstance(matrix, np.ndarray) or matrix.dtype.kind != 'U':
+        if not isinstance(matrix, np.ndarray) or matrix.dtype.kind != "U":
             return False
-        
+
         if matrix.ndim != 2:
             return False
-        
+
         for col in range(matrix.shape[1]):
             if len(set(matrix[:, col])) != matrix.shape[0]:
                 return False
-        
+
         return True
+
 
 def main():
     voter_preference = np.char.array(
@@ -323,21 +364,25 @@ def main():
             ["A", "E", "A", "A", "A", "C", "E"],  # 3rd preference
             ["D", "B", "C", "B", "B", "E", "D"],  # 4th preference
             ["E", "D", "B", "C", "C", "B", "C"],
-        ]  
+        ]
     )
 
     print("Original preferences:")
     print(voter_preference)
-    true_outome = {k: v for k, v in sorted(plurality_voting(voter_preference).items(), key=lambda item: item[1], reverse=True)}
+    true_outome = {
+        k: v
+        for k, v in sorted(
+            plurality_voting(voter_preference).items(),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+    }
     print(f"{true_outome}")
 
-    test = ATVA3(
-        happiness_measure=NDCG, risk_measure=FlipRewardRisk
-    )
+    test = ATVA3(happiness_measure=NDCG, risk_measure=FlipRewardRisk)
 
     reconstruct_preference, outcome, happiness, _, _, risk = test.analyze(
-        voter_preference=voter_preference,
-        voting_scheme=plurality_voting
+        voter_preference=voter_preference, voting_scheme=plurality_voting
     )
     print("\nReconstructed preferences:")
     print(reconstruct_preference)
@@ -346,5 +391,6 @@ def main():
     print(happiness)
     print(risk)
 
-if __name__  == '__main__':
+
+if __name__ == "__main__":
     main()
