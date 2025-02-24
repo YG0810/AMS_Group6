@@ -16,4 +16,5 @@ HappinessMeasure = Callable[
     [VoterPreference, list[str], list[float] | None, list[float] | None], float
 ]
 # (voter_preference,voting_scheme, individual_happiness, strategic_options) -> float
-RiskMeasure = Callable[[VoterPreference, VotingScheme, list[float], list[Any]], float]
+RiskMeasure = Callable[[VoterPreference,
+                        VotingScheme, list[float], list[Any]], float]
