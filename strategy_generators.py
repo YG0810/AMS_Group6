@@ -9,9 +9,9 @@ class StrategyGenerator(Protocol):
 
 def defaultStrategyGenerator(
         input: np.char.chararray, maxN: int, permuteRange: range | None = None) -> list[tuple[str, ...]]:
-    """Get all permutations of the input, equivalent to `itertools.permutations`"""
+    """Get all permutations of the input of length N, equivalent to `itertools.permutations`"""
 
-    return list(permutations(input))
+    return list(permutations(input, maxN))
 
 
 def createNDistinctPermutations(
