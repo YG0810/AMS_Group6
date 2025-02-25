@@ -1,4 +1,5 @@
 from math import log2
+from typing import Protocol
 from numpy import chararray as npchar
 import numpy as np
 
@@ -9,7 +10,6 @@ from Types import (
     HappinessMeasure,
     RiskMeasure,
 )  # NOQA
-
 
 def createRanking(
     preferences: VoterPreference,
@@ -26,7 +26,8 @@ def createRanking(
     result: list[float] = []
     for i, key in enumerate(preferences):
         distance = max(0, NonZeroWeightsCount - outcome.index(key))
-        result.append(distance * preferenceWeights[i] * distanceWeights[distance - 1])
+        result.append(
+            distance * preferenceWeights[i] * distanceWeights[distance - 1])
 
     return result
 
@@ -63,7 +64,8 @@ def NDCG(
         preferenceWeights += [0] * paddingAmount
 
     # Let's generate the rankings of the preferences
-    rankings = createRanking(preferences, outcome, preferenceWeights, distanceWeights)
+    rankings = createRanking(preferences, outcome,
+                             preferenceWeights, distanceWeights)
 
     # Let's generate the ideal rankings for normalisation, which is possible if pref==outcome
     # Note that I intentionally sacrificed a simple implementation in favour of reusing the same code path for consistency
@@ -170,7 +172,8 @@ def get_happiness(
     for preference_idx in range(len(voter_preference)):
         # Retrieve distance between preference and outcome
         distance = abs(
-            preference_idx - voting_outcome.index(voter_preference[preference_idx])
+            preference_idx -
+            voting_outcome.index(voter_preference[preference_idx])
         )
 
         # Calculate happiness score
