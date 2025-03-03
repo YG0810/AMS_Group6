@@ -143,7 +143,7 @@ class ATVA3:
 
                 # Check the modified happiness
                 mod_happiness = self.happiness_measure(
-                    option, list(mod_outcome.keys())  # type:ignore
+                    reconstruct_preference[:, i], list(mod_outcome.keys())  # type:ignore
                 )
                 if (
                     mod_happiness > individual_happiness[i]
