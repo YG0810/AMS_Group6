@@ -382,9 +382,18 @@ def main():
     print(f"{true_outome}")
 
     test = ATVA3(happiness_measure=NDCG, risk_measure=FlipRewardRisk)
+    params = {
+        'num_simulations': 300,
+        'window_size': 30,
+        'stable_window': 60,
+        'target_acceptance': 0.2,
+        'improvement_threshold': 0.01
+    }
 
     reconstruct_preference, outcome, happiness, _, _, risk = test.analyze(
-        voter_preference=voter_preference, voting_scheme=plurality_voting
+        voter_preference=voter_preference, 
+        voting_scheme=plurality_voting,
+        sim_params=params,
     )
     print("\nReconstructed preferences:")
     print(reconstruct_preference)
