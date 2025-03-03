@@ -127,6 +127,9 @@ class ATVA3:
 
             # Find all possible permutations of the voter's preference
             all_options = set(permutations(reconstruct_preference[:, i]))
+            all_options.discard(
+                tuple(reconstruct_preference[:, i])
+            )
 
             for option in all_options:
                 # Check the modified outcome
