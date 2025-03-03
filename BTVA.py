@@ -90,7 +90,7 @@ class BTVA:
 
                 # Check the modified happiness
                 mod_happiness = self.happiness_measure(
-                    option,
+                    voter_preference[:, i],
                     list(mod_outcome.keys()),  # type:ignore
                 )
                 if (

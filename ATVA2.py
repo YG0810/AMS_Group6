@@ -83,7 +83,7 @@ class ATVA2:
                 }
 
                 # Check the modified happiness
-                mod_happiness = self.happiness_measure(option, list(mod_outcome.keys()))
+                mod_happiness = self.happiness_measure(voter_preference[:, i], list(mod_outcome.keys()))
                 if mod_happiness > original_happiness:
                     # Check if another voter can counteract this strategy
                     can_be_countered = False
@@ -108,7 +108,7 @@ class ATVA2:
                             }
 
                             counter_happiness = self.happiness_measure(
-                                option, list(counter_outcome.keys())
+                                voter_preference[:, i], list(counter_outcome.keys())
                             )
                             if counter_happiness < original_happiness:
                                 can_be_countered = True
