@@ -58,7 +58,8 @@ class BTVA:
         # Happiness levels
         individual_happiness = [
             self.happiness_measure(
-                voter_preference[:, i], list(outcome.keys())  # type:ignore
+                voter_preference[:, i],
+                list(outcome.keys()),  # type:ignore
             )
             for i in range(n)
         ]
@@ -71,7 +72,9 @@ class BTVA:
 
             # Find all possible permutations of the voter's preference
             all_options = set(permutations(voter_preference[:, i]))
-            all_options.pop()  # Remove the original preference
+            all_options.discard(
+                tuple(voter_preference[:, i])
+            )  # Remove original preference
 
             for option in all_options:
                 # Check the modified outcome
@@ -87,7 +90,8 @@ class BTVA:
 
                 # Check the modified happiness
                 mod_happiness = self.happiness_measure(
-                    option, list(mod_outcome.keys())  # type:ignore
+                    option,
+                    list(mod_outcome.keys()),  # type:ignore
                 )
                 if (
                     mod_happiness > individual_happiness[i]

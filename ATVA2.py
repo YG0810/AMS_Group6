@@ -20,6 +20,7 @@ ATVA2_Output = tuple[
     CandidateResults, list[float], float, list[set[tuple[list[str], float]]], float
 ]
 
+
 class ATVA2:
     def __init__(
         self,
@@ -67,9 +68,7 @@ class ATVA2:
             all_options = set(permutations(voter_preference[:, i]))
 
             # Remove original preference
-            all_options.discard(
-                tuple(voter_preference[:, i])
-            )
+            all_options.discard(tuple(voter_preference[:, i]))
 
             for option in all_options:
                 # Check the modified outcome
