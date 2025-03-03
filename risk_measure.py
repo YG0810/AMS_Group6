@@ -50,7 +50,7 @@ def FlipRewardRisk(
     risks = []
     for i, options in enumerate(strategic_options):
         if not options:
-            risks.append(set())
+            risks.append((None, 0.0))
             continue
 
         risks4i = []
@@ -65,9 +65,7 @@ def FlipRewardRisk(
 
         max_risk_option = max(risks4i, key=lambda x: x[1])
         risks.append(max_risk_option)
-    overall_max_risk = max(risks, key=lambda x: x[1] if isinstance(x, tuple) else 0.0)[
-        1
-    ]
+    overall_max_risk = max(risks, key=lambda x: x[1])[1]
 
     # return risks, overall_max_risk
     return overall_max_risk
