@@ -28,9 +28,9 @@ def FlipRewardRisk(
         strategic_options (list): List of possible strategic options for each voter,
                                 where each option is a tuple (preference_ranking, expected_happiness)
         p (float): Sensitivity parameter controlling risk assessment, must be in range [1.3, 1.7]
-        - p=1.3 : Conservative assessment
+        - p=1.3 : Conservative assessment (preferably)
             Assigns high risk mainly when large happiness gains require few preference changes
-        - p=1.7 : Stringent assessment (preferably)
+        - p=1.7 : Stringent assessment 
             More likely to flag subtle strategic opportunities
             Assumes voters are tempted even by small happiness gains if few changes needed
 
@@ -43,7 +43,7 @@ def FlipRewardRisk(
         ValueError: If p is not in the range [1.3, 1.7]
     """
 
-    p = 1.7  # define manually
+    p = 1.3  # define manually
     if not 1.3 <= p <= 1.7:
         raise ValueError(f"Parameter p must be in range [1.3, 1.7], got {p}")
 
