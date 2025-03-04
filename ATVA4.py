@@ -142,7 +142,7 @@ class ATVA4:
         # They may still choose a less-good strategy due to RNG
 
         # Lets do 10000 simulations
-        for i in range(10000):
+        for i in range(100000):
             cunningVoters: list[tuple[int, StrategyEntry]] = []
 
             # Determine who is planning to manipulate
@@ -186,7 +186,7 @@ class ATVA4:
 
 
 def main(number: int):
-    voter_preference = generate_test(5, 5)
+    voter_preference = generate_test(10, 10)
 
     """ start_time = time()
     btva = ATVA4(happiness_measure=NDCG, risk_measure=probStrategicVoting)
