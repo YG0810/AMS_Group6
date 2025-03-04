@@ -28,7 +28,7 @@ class StrategyEntry:
 
     def avg_nonIndependent_happiness_score(self):
         if (len(self.nonindependent_happiness_scores) == 0):
-            return 0
+            return -1
 
         return sum(self.nonindependent_happiness_scores) / len(self.nonindependent_happiness_scores)
 
@@ -173,10 +173,10 @@ class ATVA4:
                 v[1].nonindependent_happiness_scores.append(mod_happiness)
                 pass
 
-        # Resort the strategies of each voter based on the average score obtained in a practical setting
+        # Re-sort the strategies of each voter based on the average score obtained in a practical setting
         strategiesRes = [
             {(tuple(s.voting_preference), s.avg_nonIndependent_happiness_score())
-             for s in IS.strategies}
+             for s in IS.strategies if s.avg_nonIndependent_happiness_score() != -1}
             for IS in individualStrategies]
 
         risk = self.risk_measure(
