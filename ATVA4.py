@@ -1,4 +1,5 @@
-import itertools
+from dataclasses import dataclass, field
+from random import random
 from time import time
 import numpy as np
 from Types import (
@@ -16,8 +17,45 @@ from voting_schemes import plurality_voting
 
 CoalitionStrategies = list[tuple[tuple[int, ...], list[tuple[str, ...]]]]
 
+
+@dataclass
+class StrategyEntry:
+    voting_preference: list[str]
+    happiness_score: float
+
+    nonindependent_happiness_scores: list[float] = field(
+        default_factory=list[float])
+
+    def avg_nonIndependent_happiness_score(self):
+        if (len(self.nonindependent_happiness_scores) == 0):
+            return 0
+
+        return sum(self.nonindependent_happiness_scores) / len(self.nonindependent_happiness_scores)
+
+
+@dataclass
+class IndividualStrategies:
+    strategies: list[StrategyEntry]
+    sumHappinessGained: float
+
+    # Gets a random strategy, with more beneficial strategies being more likely
+    def getRandomStrategy(self):
+        randomNumber = random() * self.sumHappinessGained
+
+        thres = 0
+
+        for strat in self.strategies:
+            thres += strat.happiness_score
+            if (randomNumber <= thres):
+                return strat
+
+        return self.strategies[0]
+
+
+StrategyList = list[IndividualStrategies]
+
 ATVA4_Output = tuple[
-    CandidateResults, list[float], float, CoalitionStrategies, float
+    CandidateResults, list[float], float, list[set[tuple[list[str], float]]], float
 ]
 
 
@@ -61,24 +99,16 @@ class ATVA4:
         permutations = self.strategyGenerator(
             np.char.asarray(voter_preference[:, 0]), 10000)
 
-        potential_coalitions: list[tuple[int, ...]] = []
-        for i in range(1, self.maxCoalitionSize+1):
-            potential_coalitions += itertools.combinations(range(0, n), i)
+        individualStrategies: StrategyList = []
 
-        coalitionStrategies: CoalitionStrategies = []
-
-        for cI in range(len(potential_coalitions)):
-            coalition = potential_coalitions[cI]
-            coalitionChoices = [0] * len(coalition)
-
+        # For each voter, we determine what strategies are available to them, and their happiness if they are the only
+        for i in range(n):
+            strategies: list[StrategyEntry] = []
+            happinessGainedSum: float = 0
             mod_pref = voter_preference.copy()
 
-            while (True):
-                # Apply modified preferences
-                for i in range(len(coalition)):
-                    mod_pref[:, coalition[i]
-                             ] = permutations[coalitionChoices[i]]
-
+            for p in permutations:
+                mod_pref[:, i] = p
                 mod_outcome = voting_scheme(mod_pref)
                 mod_outcome = {
                     k: v
@@ -88,48 +118,74 @@ class ATVA4:
                 }
 
                 # Check the modified happiness
-                groupHappinessGained = 0.0
+                # We are *intentionally* checking the modified outcome against the original preference list
+                # This is because ultimately the goal of the voter is to improve the results to better match their original preference
+                # If we check against the alternate preference, then it implies that we just want the voter to choose a list that matches others rather than their own
+                mod_happiness: float = self.happiness_measure(
+                    np.char.asarray(voter_preference[:, i]), list(
+                        mod_outcome.keys()), None, None
+                )
 
-                for i in range(len(coalition)):
-                    mod_happiness = self.happiness_measure(
-                        permutations[coalitionChoices[i]], list(
-                            mod_outcome.keys())  # type:ignore
-                    )
+                happinessGained = max(
+                    mod_happiness - individual_happiness[i], 0)
+                happinessGainedSum += happinessGained
+                strategies.append(StrategyEntry(list(p), happinessGained))
 
-                    originalhappiness = individual_happiness[coalition[i]]
-                    groupHappinessGained += mod_happiness - originalhappiness\
+            individualStrategies.append(IndividualStrategies(
+                sorted(strategies, key=lambda e: e.happiness_score, reverse=True),
+                happinessGainedSum
+            ))
+
+        # Now that we have the strategies that are possible, let's make an archaic simulation
+        # Each voter have a chance of "attempting" to manipulate the outcome, independently and without consideration to others
+        # When they decide to manipulate, they are more likely to select a strategy that benefits them more
+        # They may still choose a less-good strategy due to RNG
+
+        # Lets do 10000 simulations
+        for i in range(10000):
+            cunningVoters: list[tuple[int, StrategyEntry]] = []
+
+            # Determine who is planning to manipulate
+            for j in range(n):
+                # Voters only have a 30% chance of being a smartass
+                if (random() > 0.3):
+                    continue
+
+                voterChoice = individualStrategies[j].getRandomStrategy()
+
+                cunningVoters.append((j, voterChoice))
+
+            # Apply the strategies
+            mod_pref = voter_preference.copy()
+            for v in cunningVoters:
+                mod_pref[:, v[0]] = v[1].voting_preference
+
+            mod_outcome = voting_scheme(mod_pref)
+            mod_outcome = list({
+                k: v
+                for k, v in sorted(mod_outcome.items(), key=lambda item: item[1], reverse=True)
+            }.keys())
+
+            for v in cunningVoters:
+                mod_happiness = self.happiness_measure(np.char.asarray(
+                    voter_preference[:, v[0]]), mod_outcome, None, None)
+
+                v[1].nonindependent_happiness_scores.append(mod_happiness)
+                pass
+
+        # Resort the strategies of each voter based on the average score obtained in a practical setting
+        strategiesRes = [
+            {(tuple(s.voting_preference), s.avg_nonIndependent_happiness_score())
+             for s in IS.strategies}
+            for IS in individualStrategies]
+
+        risk = self.risk_measure(
+            voter_preference, voting_scheme, individual_happiness, strategiesRes)
+
+        return outcome, individual_happiness, overall_happiness, strategiesRes, risk  # type:ignore
 
 
-                if (groupHappinessGained > 0):
-                    coalitionStrategies.append(
-                        (tuple(coalition), [permutations[i] for i in coalitionChoices]))
-
-                # Increment and carry
-                carry = True
-                for i in range(len(coalition)):
-                    if not carry:
-                        break
-
-                    carry = False
-                    coalitionChoices[i] += 1
-                    if (coalitionChoices[i] >= len(permutations)):
-                        coalitionChoices[i] = 0
-                        carry = True
-
-                if (carry):
-                    break
-
-        """ risk = self.risk_measure(
-            voter_preference,
-            voting_scheme,
-            individual_happiness,
-            strategic_options,
-        ) """
-
-        return outcome, individual_happiness, overall_happiness, coalitionStrategies, 0
-
-
-def main(number:int):
+def main(number: int):
     voter_preference = generate_test(5, 5)
 
     """ start_time = time()
@@ -146,12 +202,12 @@ def main(number:int):
     print("Risk (default strategy generation)", risk)
     print("Time taken (default strategy generation)", defaultDuration) """
 
-    coalitionSize= number
+    coalitionSize = number
 
     start_time = time()
     btva = ATVA4(happiness_measure=NDCG, risk_measure=probStrategicVoting,
                  strategyGenerator=createNDistinctPermutations, maxCoalitionSize=coalitionSize)
-    outcome, happiness, overall_happiness, coalitionStrategies, risk = btva.analyze(
+    outcome, happiness, overall_happiness, strategies, risk = btva.analyze(
         voter_preference, plurality_voting
     )
     endTimeDefault = time()
@@ -160,8 +216,6 @@ def main(number:int):
 
     print("Risk (1000 distinct permutations)", risk)
     print("Time taken (1000 distinct permutations)", defaultDuration)
-    print(f"Coalition strategies count (coalition size {coalitionSize}): ",
-          len(coalitionStrategies))
 
 
 if __name__ == "__main__":
