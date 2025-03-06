@@ -92,7 +92,7 @@ def JointFlipRewardRisk(
 
     """
 
-    p = 1.7  # define manually
+    p = 1.3  # define manually
     if not 1.3 <= p <= 1.7:
         raise ValueError(f"Parameter p must be in range [1.3, 1.7], got {p}")
 
