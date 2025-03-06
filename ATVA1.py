@@ -75,7 +75,7 @@ class ATVA1:
                 }
                 delta_happiness = [ # change in happiness for each voter in collusion
                     self.happiness_measure(
-                        modified_preference_matrix[:, i],
+                        voter_preference[:, i],
                         list(current_outcome.keys())
                     ) - individual_happiness[i]
                     for i in collusion_candidate
@@ -119,6 +119,5 @@ if __name__ == '__main__':
     )
 
     atva = ATVA1(happiness_measure=KendallTau, exhaustiveSearch=True)
-    outcome, individual_happiness, overall_happiness, collusion_options, __ = atva.analyze(voter_preference, plurality_voting)
-    # print collusion options for (1, 3)
-    print(len(collusion_options))
+    outcome, individual_happiness, overall_happiness, collusion_options, _ = atva.analyze(voter_preference, plurality_voting)
+    # print(collusion_options)
