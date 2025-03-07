@@ -3,6 +3,7 @@ from voting_schemes import plurality_voting
 from Types import HappinessMeasure, RiskMeasure, VoterPreference, VotingScheme
 from strategy_generators import StrategyGenerator, defaultStrategyGenerator
 from happiness_measure import KendallTau
+from risk_measure import probStrategicVoting
 
 class ATVA1:
     def __init__(
@@ -43,7 +44,8 @@ class ATVA1:
         overall_happiness = sum(individual_happiness)
 
         # Strategic voting options
-        strategic_options = [self.strategyGenerator(voter_preference[:, i], m)[1:] for i in range(n)]
+        strategic_options = [self.strategyGenerator(voter_preference[:, i], m) for i in range(n)]
+        [strategic_options[i].remove(tuple(voter_preference[:, i])) for i in range(n)] # remove original preference
 
         # potential collusions
         collusion_permutations_raw = self.strategyGenerator(range(n), self.maxCollusionSize)
@@ -62,7 +64,7 @@ class ATVA1:
             strategic_options_indices = [0 for _ in range(self.maxCollusionSize)]
             modified_preference_matrix = voter_preference.copy()
 
-            # apply first possible strategic option, original not allowed since it wouldn't be collusion
+            # apply first possible strategic option
             for i in collusion_candidate:
                 modified_preference_matrix[:, i] = strategic_options[i][0]
 
@@ -83,7 +85,7 @@ class ATVA1:
                 if all([delta > 0 for delta in delta_happiness]): # only consider strictly better
                     collusion_options.append((
                         collusion_candidate,
-                        [modified_preference_matrix[:, i] for i in collusion_candidate],
+                        [modified_preference_matrix[:, i].copy() for i in collusion_candidate],
                         delta_happiness
                     ))
                     if not self.exhaustiveSearch:
@@ -103,8 +105,22 @@ class ATVA1:
                 if strategic_options_indices[-1] >= len(strategic_options[-1]):
                     break # all possible strategic options have been applied
 
-        # collusion risk calculated elsewhere
-        collusion_risk = np.nan
+        # split collusion options into individual strategic options (only for risk calculation)
+        strategic_options = []
+        for i in range(n):
+            options = set()
+            for j in collusion_options:
+                for k in j[0]:
+                    if k == i:
+                        options.add((tuple(j[1][k]), j[2][k] + individual_happiness[i]))
+            strategic_options.append(options)
+        # calculate risk of strategic voting
+        collusion_risk = self.risk_measure(
+            voter_preference,
+            voting_scheme,
+            individual_happiness,
+            strategic_options
+        )
 
         return outcome, individual_happiness, overall_happiness, collusion_options, collusion_risk
 
@@ -118,6 +134,6 @@ if __name__ == '__main__':
         ]
     )
 
-    atva = ATVA1(happiness_measure=KendallTau, exhaustiveSearch=True)
-    outcome, individual_happiness, overall_happiness, collusion_options, _ = atva.analyze(voter_preference, plurality_voting)
+    atva = ATVA1(happiness_measure=KendallTau, risk_measure=probStrategicVoting, exhaustiveSearch=True)
+    outcome, individual_happiness, overall_happiness, collusion_options, risk = atva.analyze(voter_preference, plurality_voting)
     # print(collusion_options)
