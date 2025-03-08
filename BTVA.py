@@ -93,11 +93,13 @@ class BTVA:
                     voter_preference[:, i],
                     list(mod_outcome.keys()),  # type:ignore
                 )
-                if (
+                """if (
                     mod_happiness > individual_happiness[i]
                 ):  # Only consider options that increase happiness
-                    # Save (modified preference, modified happiness)
-                    options.add((option, mod_happiness))
+                    # Save (modified preference, modified happiness)"""
+                # Bloom change: for probStrategicVoting, I need to know how many samples are considered
+                ## Every other risk measure have been modified to ignore the bad options
+                options.add((option, mod_happiness))
             strategic_options.append(options)
         risk = self.risk_measure(
             voter_preference,
