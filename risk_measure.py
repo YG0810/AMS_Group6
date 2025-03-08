@@ -56,8 +56,8 @@ def FlipRewardRisk(
         risks4i = []
         for pref in options:
             # Ignore options that are not good
-            if (pref[1] <= individual_happiness[i]):
-                continue
+            #if (pref[1] <= individual_happiness[i]):
+            #    continue
             
             preference, happiness = pref
             norm_dist = inversion_ranking_distance(
