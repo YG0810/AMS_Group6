@@ -1,5 +1,4 @@
 import numpy as np
-from itertools import permutations
 from Types import (
     VoterPreference,
     VotingScheme,
@@ -7,6 +6,7 @@ from Types import (
     HappinessMeasure,
     RiskMeasure,
 )
+from strategy_generators import StrategyGenerator, defaultStrategyGenerator
 
 # (non-strategic voting outcome, voter happiness, overall happiness, voting options per voter, overall risk)
 BTVA_Output = tuple[
@@ -19,6 +19,7 @@ class BTVA:
         self,
         happiness_measure: HappinessMeasure = lambda _, __, ___, ____: np.nan,
         risk_measure: RiskMeasure = lambda _, __, ___, ____: np.nan,
+        strategyGenerator: StrategyGenerator = defaultStrategyGenerator
     ):
         """
         Create a Basic Tactical Voting Analyst (BTVA) object.
@@ -28,6 +29,7 @@ class BTVA:
         """
         self.happiness_measure = happiness_measure
         self.risk_measure = risk_measure
+        self.strategy_generator = strategyGenerator
 
     def analyze(
         self,
@@ -64,21 +66,19 @@ class BTVA:
             for i in range(n)
         ]
         overall_happiness = sum(individual_happiness)
+        # Find all possible permutations of the voter's preference
+        all_options = self.strategy_generator(
+            np.char.asarray(voter_preference[:, 0]), 10000)
 
         # Strategic voting options
         strategic_options = []
         for i in range(n):
             options = set()
-
-            # Find all possible permutations of the voter's preference
-            all_options = set(permutations(voter_preference[:, i]))
-            all_options.discard(
-                tuple(voter_preference[:, i])
-            )  # Remove original preference
+            mod_pref = voter_preference.copy()
 
             for option in all_options:
                 # Check the modified outcome
-                mod_pref = voter_preference.copy()
+
                 mod_pref[:, i] = option
                 mod_outcome = voting_scheme(mod_pref)
                 mod_outcome = {
@@ -98,7 +98,7 @@ class BTVA:
                 ):  # Only consider options that increase happiness
                     # Save (modified preference, modified happiness)"""
                 # Bloom change: for probStrategicVoting, I need to know how many samples are considered
-                ## Every other risk measure have been modified to ignore the bad options
+                # Every other risk measure have been modified to ignore the bad options
                 options.add((option, mod_happiness))
             strategic_options.append(options)
         risk = self.risk_measure(
