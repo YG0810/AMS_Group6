@@ -43,7 +43,7 @@ def createNDistinctCombinations(
     while len(uniqueMiddles) < maxN and successiveFailedAttempts < 15:
         countAttempts += 1
         shuffle(input)
-        outputTuple = tuple(middle)
+        outputTuple = tuple(input)
         if (outputTuple in uniqueMiddles):
             successiveFailedAttempts += 1
             continue
@@ -51,7 +51,6 @@ def createNDistinctCombinations(
         successiveFailedAttempts = 0
 
     for i in uniqueMiddles:
-        permu.append(tuple(np.char.asarray(
-            np.concatenate([left, i, right]))))
+        combo.append(i)
 
-    return permu
+    return combo
