@@ -47,18 +47,17 @@ def FlipRewardRisk(
     if not 1.3 <= p <= 1.7:
         raise ValueError(f"Parameter p must be in range [1.3, 1.7], got {p}")
 
-    risks = []
+    risks = [(None, 0.0)]
     for i, options in enumerate(strategic_options):
         if not options:
-            risks.append((None, 0.0))
             continue
 
-        risks4i = []
+        risks4i = [(None, 0.0)]
         for pref in options:
             # Ignore options that are not good
-            #if (pref[1] <= individual_happiness[i]):
-            #    continue
-            
+            if (pref[1] <= individual_happiness[i]):
+                continue
+
             preference, happiness = pref
             norm_dist = inversion_ranking_distance(
                 np.char.array(voter_preference[:, i]), list(preference)
