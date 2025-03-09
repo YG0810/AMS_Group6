@@ -9,7 +9,7 @@ from BTVA import BTVA, HappinessMeasure, RiskMeasure, VotingScheme
 import happiness_measure
 from pandas import DataFrame
 from happiness_measure import get_happiness
-from risk_measure import FlipRewardRisk, JointFlipRewardRisk, probStrategicVoting
+from risk_measure import FlipRewardRisk, JointFlipRewardRisk, WinnerChangeRisk, probStrategicVoting
 from strategy_generators import StrategyGenerator
 import strategy_generators
 from voting_schemes import (
@@ -136,6 +136,7 @@ def testMatrix() -> DataFrame:
     ]
 
     risk_measures = [
+        NamedRiskMeasure("Winner change risk", WinnerChangeRisk),
         NamedRiskMeasure("Flip Reward", FlipRewardRisk),
         # NamedRiskMeasure("Joing Flip Reward", JointFlipRewardRisk)
         #   Yannick mentioned that this is primarily for ATVA, so this is disabled.
@@ -147,7 +148,7 @@ def testMatrix() -> DataFrame:
     for vs in votingSchemes:
         for hm in happiness_measures:
             for rm in risk_measures:
-                btva = ATVA4(hm.happiness_measure,
+                btva = BTVA(hm.happiness_measure,
                             rm.risk_measure,
                             strategy_generators.createNDistinctPermutations)
 
@@ -173,16 +174,16 @@ def testMatrix() -> DataFrame:
                     endTime = time()
 
                     print(f"Time taken: {endTime-startTime}s")
-                    return df
+        return df
     return df
 
 
 def main():
     df = testMatrix()
 
-    df.to_csv("testOutputATVA4.csv", index=False)
+    df.to_csv("testOutputBTVA2.csv", index=False)
 
-    with open("testOutputATVA4.pkl", "wb") as file:
+    with open("testOutputBTVA2.pkl", "wb") as file:
         # Serialize the object and write it to the file
         pickle.dump(df, file)
 
