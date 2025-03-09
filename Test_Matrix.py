@@ -4,6 +4,7 @@ from time import time
 import numpy as np
 from numpy.typing import NDArray
 from os import listdir
+from ATVA4 import ATVA4
 from BTVA import BTVA, HappinessMeasure, RiskMeasure, VotingScheme
 import happiness_measure
 from pandas import DataFrame
@@ -135,7 +136,7 @@ def testMatrix() -> DataFrame:
     ]
 
     risk_measures = [
-        #NamedRiskMeasure("Flip Reward", FlipRewardRisk),
+        NamedRiskMeasure("Flip Reward", FlipRewardRisk),
         # NamedRiskMeasure("Joing Flip Reward", JointFlipRewardRisk)
         #   Yannick mentioned that this is primarily for ATVA, so this is disabled.
         #   However, this serves as a reminder to implement once ATVAs work.
@@ -146,7 +147,7 @@ def testMatrix() -> DataFrame:
     for vs in votingSchemes:
         for hm in happiness_measures:
             for rm in risk_measures:
-                btva = BTVA(hm.happiness_measure,
+                btva = ATVA4(hm.happiness_measure,
                             rm.risk_measure,
                             strategy_generators.createNDistinctPermutations)
 
@@ -164,7 +165,7 @@ def testMatrix() -> DataFrame:
                         "input": tc,
                         "voting_scheme": vs.label,
                         "happiness_measure": hm.label,
-                        "happiness_values": result[0],
+                        "happiness_values": result[1],
                         "risk_measure": rm.label,
                         "risk_values": result[-1],
                     }
@@ -172,15 +173,16 @@ def testMatrix() -> DataFrame:
                     endTime = time()
 
                     print(f"Time taken: {endTime-startTime}s")
+                    return df
     return df
 
 
 def main():
     df = testMatrix()
 
-    df.to_csv("testOutput.csv", index=False)
+    df.to_csv("testOutputATVA4.csv", index=False)
 
-    with open("testOutput.pkl", "wb") as file:
+    with open("testOutputATVA4.pkl", "wb") as file:
         # Serialize the object and write it to the file
         pickle.dump(df, file)
 
