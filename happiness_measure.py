@@ -1,4 +1,4 @@
-from math import log2
+from math import ceil, floor, log2
 from typing import Protocol
 from numpy import chararray as npchar
 import numpy as np
@@ -51,7 +51,7 @@ def NDCG(
 
     # No weights specified, let's use weights of 1 for everything
     if preferenceWeights is None:
-        preferenceWeights = [1.0] * len(preferences)
+        preferenceWeights = [1.0] * (ceil(len(preferences)/2)) + [0.0] * (floor(len(preferences)/2))
     elif len(preferenceWeights) < len(preferences):
         paddingAmount = len(preferences) - len(preferenceWeights)
         preferenceWeights += [0] * paddingAmount
