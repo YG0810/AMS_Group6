@@ -103,7 +103,10 @@ class ATVA4:
 
         # For each voter, we determine what strategies are available to them, and their happiness if they are the only
         for i in range(n):
-            strategies: list[StrategyEntry] = []
+            # Also add the original option in the list, to determine whether they want to stick to their guns
+            strategies: list[StrategyEntry] = [
+                StrategyEntry(list(voter_preference[:, i]), individual_happiness[i])
+            ]
             happinessGainedSum: float = 0
             mod_pref = voter_preference.copy()
 
