@@ -137,18 +137,12 @@ def testMatrix() -> DataFrame:
 
     risk_measures = [
         NamedRiskMeasure("Winner change risk", WinnerChangeRisk),
-        NamedRiskMeasure("Flip Reward", FlipRewardRisk),
-        # NamedRiskMeasure("Joing Flip Reward", JointFlipRewardRisk)
-        #   Yannick mentioned that this is primarily for ATVA, so this is disabled.
-        #   However, this serves as a reminder to implement once ATVAs work.
-        NamedRiskMeasure("Probability of Strategic Voting",
-                         probStrategicVoting),
     ]
 
     for vs in votingSchemes:
         for hm in happiness_measures:
             for rm in risk_measures:
-                btva = BTVA(hm.happiness_measure,
+                btva = ATVA4(hm.happiness_measure,
                             rm.risk_measure,
                             strategy_generators.createNDistinctPermutations)
 
@@ -174,16 +168,15 @@ def testMatrix() -> DataFrame:
                     endTime = time()
 
                     print(f"Time taken: {endTime-startTime}s")
-        return df
     return df
 
 
 def main():
     df = testMatrix()
 
-    df.to_csv("testOutputBTVA2.csv", index=False)
+    df.to_csv("testOutputATVAWinnerFlip2.csv", index=False)
 
-    with open("testOutputBTVA2.pkl", "wb") as file:
+    with open("testOutputATVAWinnerFlip2.pkl", "wb") as file:
         # Serialize the object and write it to the file
         pickle.dump(df, file)
 

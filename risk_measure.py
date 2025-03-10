@@ -223,9 +223,8 @@ def WinnerChangeRisk(
 
     risks = []
     for voter_idx, voter_opts in enumerate(strategic_options):
-
         successful = 0
-        total = 0
+        total = len(voter_opts)
         modified_prefs = voter_preference.copy()
 
         for opt in voter_opts:
