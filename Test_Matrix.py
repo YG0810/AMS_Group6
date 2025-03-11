@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from multiprocessing.pool import Pool
+import pandas as pd
 import pickle
 from time import time
 import numpy as np
@@ -106,8 +107,7 @@ def loadData() -> list[NDArray[np.str_]]:
 
     return list(reversed(test_scenarios))
 
-
-def testMatrix() -> DataFrame:
+def eval(vs, hm, rm, tc):
     df = DataFrame(
         columns=[
             "input",
@@ -118,6 +118,36 @@ def testMatrix() -> DataFrame:
             "risk_values",
         ]
     )
+
+    btva = ATVA4(hm.happiness_measure,
+                        rm.risk_measure,
+                        strategy_generators.createNDistinctPermutations)
+
+    startTime = time()
+    print("---")
+    print(f"Testing {tc.shape}")
+    print(f"\tVoting scheme: {vs.label}")
+    print(f"\tHappiness measure: {hm.label}")
+    print(f"\tRisk measure: {rm.label}")
+    tcCA = np.char.array(tc)
+    result = btva.analyze(tcCA, vs.votingScheme)
+
+    df.loc[len(df)] = {  # type:ignore
+        "input": tc,
+        "voting_scheme": vs.label,
+        "happiness_measure": hm.label,
+        "happiness_values": result[1],
+        "risk_measure": rm.label,
+        "risk_values": result[-1],
+    }
+
+    endTime = time()
+
+    print(f"Time taken: {endTime-startTime}s")
+
+    return df
+
+def testMatrix() -> DataFrame:
     testScenarios = loadData()
     votingSchemes = [
         NamedVotingScheme("Anti-plurality voting", anti_plurality_voting),
@@ -146,37 +176,17 @@ def testMatrix() -> DataFrame:
                          probStrategicVoting),
     ]
 
+    argsList = []
 
     for vs in votingSchemes:
         for hm in happiness_measures:
             for rm in risk_measures:
-                btva = ATVA4(hm.happiness_measure,
-                            rm.risk_measure,
-                            strategy_generators.createNDistinctPermutations)
+                for ts in testScenarios:
+                    argsList.append((vs, hm, rm, ts))
 
-                for tc in testScenarios:
-                    startTime = time()
-                    print("---")
-                    print(f"Testing {tc.shape}")
-                    print(f"\tVoting scheme: {vs.label}")
-                    print(f"\tHappiness measure: {hm.label}")
-                    print(f"\tRisk measure: {rm.label}")
-                    tcCA = np.char.array(tc)
-                    result = btva.analyze(tcCA, vs.votingScheme)
-
-                    df.loc[len(df)] = {  # type:ignore
-                        "input": tc,
-                        "voting_scheme": vs.label,
-                        "happiness_measure": hm.label,
-                        "happiness_values": result[1],
-                        "risk_measure": rm.label,
-                        "risk_values": result[-1],
-                    }
-
-                    endTime = time()
-
-                    print(f"Time taken: {endTime-startTime}s")
-    return df
+    with Pool() as pool:  
+        results = pool.starmap(eval, argsList)
+        return pd.concat(results)
 
 
 def main():
