@@ -11,7 +11,7 @@ from BTVA import BTVA, HappinessMeasure, RiskMeasure, VotingScheme
 import happiness_measure
 from pandas import DataFrame
 from happiness_measure import get_happiness
-from risk_measure import FlipRewardRisk, JointFlipRewardRisk, WinnerChangeRisk, probStrategicVoting
+from risk_measure import FlipRewardRisk, HappinessWeightedPSV, JointFlipRewardRisk, NaivePSV, WinnerChangeRisk
 from strategy_generators import StrategyGenerator
 import strategy_generators
 from voting_schemes import (
@@ -172,8 +172,10 @@ def testMatrix() -> DataFrame:
         # NamedRiskMeasure("Joing Flip Reward", JointFlipRewardRisk)
         #   Yannick mentioned that this is primarily for ATVA, so this is disabled.
         #   However, this serves as a reminder to implement once ATVAs work.
-        NamedRiskMeasure("Probability of Strategic Voting",
-                         probStrategicVoting),
+        NamedRiskMeasure("Naive Probability of Strategic Voting",
+                         NaivePSV),
+        NamedRiskMeasure("Happiness Weighted PSV",
+                         HappinessWeightedPSV),
     ]
 
     argsList = []
