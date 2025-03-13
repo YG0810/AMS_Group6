@@ -177,7 +177,7 @@ def inversion_ranking_distance(base_pref: VoterPreference, option_pref: list) ->
     return inversions / max_inversions if max_inversions > 0 else 0.0
 
 
-def probStrategicVoting(
+def NaivePSV(
     _: np.ndarray,
     __: VotingScheme | None,
     voterHappiness: list[float],
@@ -194,13 +194,13 @@ def probStrategicVoting(
 
     return count / n
 
-def naiveVoting(
+def HappinessWeightedPSV(
     _: np.ndarray,
     __: VotingScheme | None,
     voterHappiness: list[float],
     strategicOptions: list[set[tuple[np.chararray, float]]],
 ):
-    staretgic_voting_probs = []
+    strategic_voting_probs = []
 
     for i, strategic_options in enumerate(strategicOptions):
         n = len(strategic_options)
@@ -210,9 +210,9 @@ def naiveVoting(
             if mod_hapiness > voterHappiness[i]:
                 count += 1
 
-        staretgic_voting_probs.append(count / n)
+        strategic_voting_probs.append(count / n)
 
-    return np.array(staretgic_voting_probs).mean()
+    return np.array(strategic_voting_probs).mean()
 
 def WinnerChangeRisk(
     voter_preference: VoterPreference,
