@@ -18,7 +18,7 @@ from strategy_generators import (
 )
 from voting_schemes import plurality_voting, borda_count_voting
 from happiness_measure import NDCG, get_happiness
-from risk_measure import FlipRewardRisk, probStrategicVoting
+from risk_measure import FlipRewardRisk
 
 from happiness_measure import *  # NOQA
 from risk_measure import *  # NOQA
@@ -34,13 +34,16 @@ class ATVA2:
         self,
         happiness_measure: HappinessMeasure = lambda _, __, ___, ____: np.nan,
         risk_measure: RiskMeasure = lambda _, __, ___, ____: np.nan,
-        strategyGenerator: StrategyGenerator = defaultStrategyGenerator,
+        strategyGenerator: StrategyGenerator = createNDistinctPermutations,
+        verbose: bool = False,
     ):
         self.happiness_measure = happiness_measure
         self.risk_measure = risk_measure
         self.strategyGenerator = strategyGenerator
+        self.all_options = None
+        self.verbose = verbose
 
-        self.maxN = 1000
+        self.maxN = 10000
 
     def analyze(
         self,
@@ -54,14 +57,23 @@ class ATVA2:
         3. Calculate what strategic voting options are left for the initial voter that improved the happiness after the counter-strategic voting.
         """
         # Step 1: Get all strategic voting options
-        outcome, individual_happiness, overall_happiness, strategic_options, risk = (
-            self._single_step_analyse(voter_preference, voting_scheme)
-        )
+        (
+            outcome,
+            individual_happiness,
+            overall_happiness,
+            strategic_options,
+            risk,
+            _,
+            _,
+        ) = self._single_step_analyse(voter_preference, voting_scheme)
 
         # Step 2: For each strategic voting option, get the counter-strategic voting options
         counter_voting_risks = []
 
         for i in range(len(voter_preference[0])):
+            max_hapiness = individual_happiness[i]
+            max_strategic_option = voter_preference[:, i]
+
             for strategic_option, happiness in strategic_options[i]:
                 strategic_voter = i
                 strategic_voter_original_hapiness = individual_happiness[i]
@@ -72,16 +84,25 @@ class ATVA2:
                     voter_preference_adj[:, i] = strategic_option
 
                     # Analyze the counter-strategic voting
-                    _, _, _, _, counter_risk = self._single_step_analyse(
-                        voter_preference_adj,
-                        voting_scheme,
-                        excluded_voter=strategic_voter,
-                        excluded_voter_preference=voter_preference[:, i],
-                        excluded_voter_original_hapiness=strategic_voter_original_hapiness,
+                    _, _, _, _, counter_risk, max_hapiness, max_strategic_option = (
+                        self._single_step_analyse(
+                            voter_preference_adj,
+                            voting_scheme,
+                            excluded_voter=strategic_voter,
+                            excluded_voter_preference=voter_preference[:, i],
+                            excluded_voter_original_hapiness=strategic_voter_original_hapiness,
+                            max_hapiness=max_hapiness,
+                            max_strategic_option=max_strategic_option,
+                        )
                     )
 
                     # Calculate the risk of the counter-strategic voting
                     counter_voting_risks.append(counter_risk)
+
+            if self.verbose:
+                print(
+                    f"Voter {i} has a maximum happiness of {max_hapiness} with the strategic option {max_strategic_option} considering counter-strategic voting."
+                )
 
         # Adjusted risk
         if counter_voting_risks:
@@ -96,6 +117,8 @@ class ATVA2:
         excluded_voter: int | None = None,
         excluded_voter_preference: npchar | None = None,
         excluded_voter_original_hapiness: float | None = None,
+        max_hapiness: float | None = None,
+        max_strategic_option: list[str] | None = None,
     ):
         """
         Analyze the voting preference of a group of voters using a specific voting scheme.
@@ -128,11 +151,13 @@ class ATVA2:
         ]
         overall_happiness = sum(individual_happiness)
         # Find all possible permutations of the voter's preference
-        all_options = self.strategyGenerator(
-            np.char.asarray(voter_preference[:, 0]), 10000
-        )
+        if not self.all_options:
+            self.all_options = self.strategyGenerator(
+                np.char.asarray(voter_preference[:, 0]), 10000
+            )
 
         # Strategic voting options
+        is_countered = False
         strategic_options = []
         for i in range(n):
             if excluded_voter and i == excluded_voter:
@@ -142,7 +167,7 @@ class ATVA2:
             options = set()
             mod_pref = voter_preference.copy()
 
-            for option in all_options:
+            for option in self.all_options:
                 # Check the modified outcome
 
                 mod_pref[:, i] = option
@@ -168,14 +193,22 @@ class ATVA2:
 
                 # Reset the hapiness if the excluded voter is still happier then the original hapiness, since it's not a counter vote
                 if excluded_voter is not None:
-                    excluded_voter_adj_hapiness = self.happiness_measure(
-                        excluded_voter_preference,
-                        list(mod_outcome.keys()),  # type:ignore
-                    )
+                    if (
+                        mod_happiness > individual_happiness[i]
+                    ):  # If strategic vote is beneficial for the counter
+                        excluded_voter_adj_hapiness = self.happiness_measure(
+                            excluded_voter_preference,
+                            list(mod_outcome.keys()),  # type:ignore
+                        )
 
-                    if excluded_voter_original_hapiness < excluded_voter_adj_hapiness:
-                        # Not a counter vote, so reset the happiness, excluding it from the risk measurements
-                        mod_happiness = individual_happiness[i]
+                        if (
+                            excluded_voter_original_hapiness
+                            < excluded_voter_adj_hapiness
+                        ):
+                            # Not a counter vote, so reset the happiness, excluding it from the risk measurements
+                            mod_happiness = individual_happiness[i]
+                        else:  # Counter vote
+                            is_countered = True
 
                 options.add((option, mod_happiness))
             strategic_options.append(options)
@@ -188,17 +221,37 @@ class ATVA2:
             excluded_voter,
         )
 
-        return outcome, individual_happiness, overall_happiness, strategic_options, risk
+        # If the counter-voting is not countered, return the max happiness and the strategic option
+        if self.verbose and not is_countered and excluded_voter:
+            happiness = self.happiness_measure(
+                excluded_voter_preference,
+                list(outcome.keys()),  # type:ignore
+            )
+
+            if happiness > max_hapiness:
+                max_hapiness = happiness
+                max_strategic_option = voter_preference[:, excluded_voter]
+
+        return (
+            outcome,
+            individual_happiness,
+            overall_happiness,
+            strategic_options,
+            risk,
+            max_hapiness,
+            max_strategic_option,
+        )
 
 
 def main():
     voter_preference = np.char.array(
-        # voters:   1    2    3
+        # voters:   1    2    3    ...
         [
-            ["B", "A", "C"],  # 1st preference
-            ["C", "B", "A"],  # 2nd preference
-            ["D", "C", "D"],  # 3rd preference
-            ["A", "D", "B"],  # 3rd preference
+            ["E", "C", "B", "D", "D", "A", "E", "C", "C", "C"],  # 1st preference
+            ["C", "E", "A", "E", "A", "D", "C", "A", "A", "E"],  # 2st preference
+            ["D", "D", "D", "B", "B", "E", "B", "D", "E", "A"],  # 3rd preference
+            ["A", "B", "C", "A", "E", "C", "A", "E", "D", "D"],  # 4rd preference
+            ["B", "A", "E", "C", "C", "B", "D", "B", "B", "B"],  # 5rd preference
         ]
     )
 
@@ -206,13 +259,14 @@ def main():
     print(voter_preference)
     test = ATVA2(
         happiness_measure=NDCG,
-        risk_measure=probStrategicVoting,
+        risk_measure=FlipRewardRisk,
         strategyGenerator=createNDistinctPermutations,
+        verbose=True,
     )
 
     outcome, happiness, _, _, risk = test.analyze(
         voter_preference=voter_preference,
-        voting_scheme=borda_count_voting,
+        voting_scheme=plurality_voting,
     )
     print("\n")
     print(happiness)
