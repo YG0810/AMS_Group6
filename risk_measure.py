@@ -216,8 +216,12 @@ def HappinessWeightedPSV(
     for i, strategic_options in enumerate(strategicOptions):
         if excluded_voter and i == excluded_voter:
             continue
-
+        
         n = len(strategic_options)
+        if n == 0:
+            strategic_voting_probs.append(0.0)
+            continue
+        
         count = 0.0
 
         for _, mod_hapiness in strategic_options:
