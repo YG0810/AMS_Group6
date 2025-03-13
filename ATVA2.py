@@ -11,6 +11,7 @@ from Types import (
     HappinessMeasure,
     RiskMeasure,
 )
+from strategy_generators import StrategyGenerator, createNDistinctPermutations
 
 from happiness_measure import *  # NOQA
 from risk_measure import *  # NOQA
@@ -26,9 +27,13 @@ class ATVA2:
         self,
         happiness_measure: HappinessMeasure = lambda _, __, ___, ____: np.nan,
         risk_measure: RiskMeasure = lambda _, __, ___, ____: np.nan,
+        strategyGenerator: StrategyGenerator = defaultStrategyGenerator,
     ):
         self.happiness_measure = happiness_measure
         self.risk_measure = risk_measure
+        self.strategyGenerator = strategyGenerator
+
+        self.maxN = 1000        
 
     def analyze(
         self,
@@ -59,20 +64,18 @@ class ATVA2:
             for i in range(n)
         ]
         overall_happiness = sum(individual_happiness)
+        # Find all possible permutations of the voter's preference
+        all_options = self.strategy_generator(
+            np.char.asarray(voter_preference[:, 0]), 10000)
 
         # Strategic voting options
         strategic_options = []
         for i in range(n):
             options = set()
-            original_happiness = individual_happiness[i]
-            all_options = set(permutations(voter_preference[:, i]))
-
-            # Remove original preference
-            all_options.discard(tuple(voter_preference[:, i]))
+            mod_pref = voter_preference.copy()
 
             for option in all_options:
                 # Check the modified outcome
-                mod_pref = voter_preference.copy()
                 mod_pref[:, i] = option
                 mod_outcome = voting_scheme(mod_pref)
                 mod_outcome = {
@@ -83,49 +86,57 @@ class ATVA2:
                 }
 
                 # Check the modified happiness
-                mod_happiness = self.happiness_measure(voter_preference[:, i], list(mod_outcome.keys()))
-                if mod_happiness > original_happiness:
-                    # Check if another voter can counteract this strategy
-                    can_be_countered = False
+                mod_happiness = self.happiness_measure(
+                    voter_preference[:, i],
+                    list(mod_outcome.keys()),  # type:ignore
+                )
+
+                counter_voters_options = set()
+
+                if (
+                    mod_happiness > individual_happiness[i]
+                ):  # Only consider options that increase happiness
+                    # Find all possible permutations of the voter's preference
+                    all__counter_options = self.strategy_generator(
+                        np.char.asarray(mod_pref[:, 0]), 10000)
+
                     for j in range(n):
                         if j == i:
                             continue  # Skip the same voter
+                        
+                        counter_options = set()
 
-                        all_counter_options = set(permutations(voter_preference[:, j]))
-                        all_counter_options.discard(tuple(voter_preference[:, j]))
+                        counter_mod_pref = mod_pref.copy()
+                        counter_happiness = individual_happiness[j]
 
-                        for counter_option in all_counter_options:
-                            counter_pref = mod_pref.copy()
-                            counter_pref[:, j] = counter_option
-                            counter_outcome = voting_scheme(counter_pref)
-                            counter_outcome = {
+                        for counter_option in all__counter_options:
+                            # Check the counter modified outcome
+                            counter_mod_pref[:, j] = counter_option
+                            counter_mod_outcome = voting_scheme(counter_mod_pref)
+                            counter_mod_outcome = {
                                 k: v
                                 for k, v in sorted(
-                                    counter_outcome.items(),
-                                    key=lambda item: item[1],
-                                    reverse=True,
+                                    counter_mod_outcome.items(), key=lambda item: item[1], reverse=True,
                                 )
                             }
 
-                            counter_happiness = self.happiness_measure(
-                                voter_preference[:, i], list(counter_outcome.keys())
+                            # Check the counter modified happiness
+                            counter_mod_happiness = self.happiness_measure(
+                                mod_pref[:, j],
+                                list(counter_mod_outcome.keys()),  # type:ignore
                             )
-                            if counter_happiness < original_happiness:
-                                can_be_countered = True
-                                break
-                        if can_be_countered:
-                            break
+                            
+                            # Add the counter voter j options
+                            counter_options.add((counter_option, counter_mod_happiness, counter_happiness))
+                        
+                        counter_voters_options.add((j, counter_options))
 
-                    if not can_be_countered:
-                        options.add((option, mod_happiness))
-
+                options.add((option, mod_happiness, counter_voters_options))
             strategic_options.append(options)
-
         risk = self.risk_measure(
             voter_preference,
             voting_scheme,
             individual_happiness,
             strategic_options,
         )
-
         return outcome, individual_happiness, overall_happiness, strategic_options, risk
