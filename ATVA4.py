@@ -11,7 +11,7 @@ from Types import (
 )
 from generate_test_cases import generate_test
 from happiness_measure import NDCG
-from risk_measure import probStrategicVoting
+from risk_measure import NaivePSV
 from strategy_generators import StrategyGenerator, createNDistinctPermutations, defaultStrategyGenerator
 from voting_schemes import plurality_voting
 
@@ -208,7 +208,7 @@ def main(number: int):
     coalitionSize = number
 
     start_time = time()
-    btva = ATVA4(happiness_measure=NDCG, risk_measure=probStrategicVoting,
+    btva = ATVA4(happiness_measure=NDCG, risk_measure=NaivePSV,
                  strategyGenerator=createNDistinctPermutations, maxCoalitionSize=coalitionSize)
     outcome, happiness, overall_happiness, strategies, risk = btva.analyze(
         voter_preference, plurality_voting
