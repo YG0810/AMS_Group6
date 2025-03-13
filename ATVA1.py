@@ -1,7 +1,7 @@
 import numpy as np
 from voting_schemes import plurality_voting
 from Types import HappinessMeasure, RiskMeasure, VoterPreference, VotingScheme
-from strategy_generators import StrategyGenerator, defaultStrategyGenerator
+from strategy_generators import StrategyGenerator, defaultStrategyGenerator, combinationStrategyGenerator
 from happiness_measure import KendallTau
 from risk_measure import probStrategicVoting
 
@@ -12,13 +12,15 @@ class ATVA1:
         risk_measure: RiskMeasure = lambda _, __, ___, ____: np.nan,
         strategyGenerator: StrategyGenerator = defaultStrategyGenerator,
         maxCollusionSize: int = 2,
-        exhaustiveSearch: bool = False # if False, only search for one viable collusion per voter permutation
+        exhaustiveSearch: bool = False, # if False, only search for one viable collusion per voter permutation
+        printProgress: bool = False
     ):
         self.happiness_measure = happiness_measure
         self.risk_measure = risk_measure
         self.strategyGenerator = strategyGenerator
         self.maxCollusionSize = maxCollusionSize
         self.exhaustiveSearch = exhaustiveSearch
+        self.printProgress = printProgress
 
     def analyze(
         self,
@@ -48,19 +50,15 @@ class ATVA1:
         [strategic_options[i].remove(tuple(voter_preference[:, i])) for i in range(n)] # remove original preference
 
         # potential collusions
-        collusion_permutations_raw = self.strategyGenerator(range(n), self.maxCollusionSize)
-        # remove mirrored permutations
-        collusion_permutations = []
-        for perm in collusion_permutations_raw:
-            if perm[::-1] not in collusion_permutations:
-                collusion_permutations.append(perm)
+        collusion_permutations = combinationStrategyGenerator(range(n), self.maxCollusionSize)
 
         collusion_options = []
 
         counter = 0
         for collusion_candidate in collusion_permutations:
             counter += 1
-            print(f'collusion candidate {counter}/{len(collusion_permutations)}')
+            if self.printProgress:
+                print(f'collusion candidate {counter}/{len(collusion_permutations)}')
             strategic_options_indices = [0 for _ in range(self.maxCollusionSize)]
             modified_preference_matrix = voter_preference.copy()
 
@@ -110,9 +108,9 @@ class ATVA1:
         for i in range(n):
             options = set()
             for j in collusion_options:
-                for k in j[0]:
+                for index, k in enumerate(j[0]):
                     if k == i:
-                        options.add((tuple(j[1][k]), j[2][k] + individual_happiness[i]))
+                        options.add((tuple(j[1][index]), j[2][index] + individual_happiness[i]))
             strategic_options.append(options)
         # calculate risk of strategic voting
         collusion_risk = self.risk_measure(
@@ -125,14 +123,10 @@ class ATVA1:
         return outcome, individual_happiness, overall_happiness, collusion_options, collusion_risk
 
 if __name__ == '__main__':
-    voter_preference = np.char.array(
-    # voters: 1    2    3    4
-        [
-            ["B", "A", "C", "C"],  # 1st preference
-            ["C", "C", "B", "B"],  # 2nd preference
-            ["A", "B", "A", "A"]   # 3rd preference
-        ]
-    )
+    from generate_test_cases import generate_test
+    import random
+    random.seed(0)
+    voter_preference = generate_test(num_candidates=3, num_voters=10)
 
     atva = ATVA1(happiness_measure=KendallTau, risk_measure=probStrategicVoting, exhaustiveSearch=True)
     outcome, individual_happiness, overall_happiness, collusion_options, risk = atva.analyze(voter_preference, plurality_voting)

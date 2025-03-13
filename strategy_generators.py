@@ -1,4 +1,4 @@
-from itertools import permutations
+from itertools import permutations, combinations
 import numpy as np
 from typing import Any, Protocol
 from random import shuffle
@@ -13,6 +13,11 @@ def defaultStrategyGenerator(
 
     return list(permutations(input, maxN))
 
+def combinationStrategyGenerator(
+        input: np.char.chararray, maxN: int, permuteRange: range | None = None) -> list[tuple[str, ...]]:
+    """Get all combinations of the input of length N, equivalent to `itertools.combinations`"""
+
+    return list(combinations(input, maxN))
 
 def createNDistinctPermutations(
     input: np.char.chararray, maxN: int, permuteRange: range | None = None
