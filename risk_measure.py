@@ -194,6 +194,25 @@ def probStrategicVoting(
 
     return count / n
 
+def naiveVoting(
+    _: np.ndarray,
+    __: VotingScheme | None,
+    voterHappiness: list[float],
+    strategicOptions: list[set[tuple[np.chararray, float]]],
+):
+    staretgic_voting_probs = []
+
+    for i, strategic_options in enumerate(strategicOptions):
+        n = len(strategic_options)
+        count = 0.0
+
+        for _, mod_hapiness in strategic_options:
+            if mod_hapiness > voterHappiness[i]:
+                count += 1
+
+        staretgic_voting_probs.append(count / n)
+
+    return np.array(staretgic_voting_probs).mean()
 
 def WinnerChangeRisk(
     voter_preference: VoterPreference,
