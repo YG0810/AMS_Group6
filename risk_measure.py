@@ -11,6 +11,7 @@ def FlipRewardRisk(
     _: VotingScheme | None,
     individual_happiness: list[float],
     strategic_options: list,
+    excluded_voter: int | None = None,
 ) -> float:
     """
     Computes the likelihood of strategic voting by evaluating the trade-off between preference changes
@@ -30,7 +31,7 @@ def FlipRewardRisk(
         p (float): Sensitivity parameter controlling risk assessment, must be in range [1.3, 1.7]
         - p=1.3 : Conservative assessment (preferably)
             Assigns high risk mainly when large happiness gains require few preference changes
-        - p=1.7 : Stringent assessment 
+        - p=1.7 : Stringent assessment
             More likely to flag subtle strategic opportunities
             Assumes voters are tempted even by small happiness gains if few changes needed
 
@@ -49,13 +50,16 @@ def FlipRewardRisk(
 
     risks = [(None, 0.0)]
     for i, options in enumerate(strategic_options):
+        if excluded_voter and i == excluded_voter:
+            continue
+
         if not options:
             continue
 
         risks4i = [(None, 0.0)]
         for pref in options:
             # Ignore options that are not good
-            if (pref[1] <= individual_happiness[i]):
+            if pref[1] <= individual_happiness[i]:
                 continue
 
             preference, happiness = pref
@@ -79,6 +83,7 @@ def JointFlipRewardRisk(
     _: VotingScheme | None,
     individual_happiness: list[float],
     strategic_options: list,
+    __: int | None,
 ) -> float:
     """
     Computes the joint likelihood of strategic voting by evaluating all possible
@@ -108,7 +113,7 @@ def JointFlipRewardRisk(
         risks4i = []
         for pref in options:
             # Ignore options that are not good
-            if (pref[1] <= individual_happiness[i]):
+            if pref[1] <= individual_happiness[i]:
                 continue
 
             preference, happiness = pref
@@ -177,16 +182,20 @@ def inversion_ranking_distance(base_pref: VoterPreference, option_pref: list) ->
     return inversions / max_inversions if max_inversions > 0 else 0.0
 
 
-def probStrategicVoting(
+def NaivePSV(
     _: np.ndarray,
     __: VotingScheme | None,
     voterHappiness: list[float],
     strategicOptions: list[set[tuple[np.chararray, float]]],
+    excluded_voter: int | None = None,
 ):
     n = len(voterHappiness)
     count = 0.0
 
     for i, o in enumerate(strategicOptions):
+        if excluded_voter and i == excluded_voter:
+            n -= 1
+            continue
         for o2 in o:
             if o2[1] > voterHappiness[i]:
                 count += 1
@@ -195,11 +204,37 @@ def probStrategicVoting(
     return count / n
 
 
+def HappinessWeightedPSV(
+    _: np.ndarray,
+    __: VotingScheme | None,
+    voterHappiness: list[float],
+    strategicOptions: list[set[tuple[np.chararray, float]]],
+    excluded_voter: int | None = None,
+):
+    strategic_voting_probs = []
+
+    for i, strategic_options in enumerate(strategicOptions):
+        if excluded_voter and i == excluded_voter:
+            continue
+
+        n = len(strategic_options)
+        count = 0.0
+
+        for _, mod_hapiness in strategic_options:
+            if mod_hapiness > voterHappiness[i]:
+                count += 1
+
+        strategic_voting_probs.append(count / n)
+
+    return np.array(strategic_voting_probs).mean()
+
+
 def WinnerChangeRisk(
     voter_preference: VoterPreference,
     voting_scheme: VotingScheme,
     individual_happiness: list[float],
     strategic_options: list,
+    excluded_voter: int | None = None,
 ) -> float:
     """
     Calculate the proportion of strategic votes that successfully change the winner.
@@ -223,20 +258,22 @@ def WinnerChangeRisk(
 
     risks = []
     for voter_idx, voter_opts in enumerate(strategic_options):
+        if excluded_voter and voter_idx == excluded_voter:
+            continue
+
         successful = 0
         total = len(voter_opts)
         modified_prefs = voter_preference.copy()
 
         for opt in voter_opts:
             # Ignore options that are not good
-            if (opt[1] <= individual_happiness[voter_idx]):
+            if opt[1] <= individual_happiness[voter_idx]:
                 continue
 
             total += 1
             modified_prefs[:, voter_idx] = opt[0]
             new_results = voting_scheme(modified_prefs)
-            new_winner = min(new_results.items(),
-                             key=lambda x: (-x[1], x[0]))[0]
+            new_winner = min(new_results.items(), key=lambda x: (-x[1], x[0]))[0]
             # new_leaderboard = [name for name, _ in sorted(new_results.items(), key=lambda item: (-item[1], item[0]))]
 
             if new_winner != true_winner:
@@ -286,10 +323,9 @@ def CollusionChangeRisk(
 
     # 1. Single Voter Manipulation
     for voter_idx, options in enumerate(strategic_options):
-
         for choice in options:
             # Ignore options that are not good
-            if (choice[1] <= invididual_happiness[voter_idx]):
+            if choice[1] <= invididual_happiness[voter_idx]:
                 continue
 
             total_attempts += 1
@@ -298,12 +334,17 @@ def CollusionChangeRisk(
 
     # 2. Two-Voter Collusion
     for voter_indices in combinations(range(len(strategic_options)), 2):
-
         voter_options = [strategic_options[i] for i in voter_indices]
-        choices_for_voter_1 = [choice for choice, eh in voter_options[0]
-                               if eh > invididual_happiness[voter_indices[0]]]
-        choices_for_voter_2 = [choice for choice, eh in voter_options[1]
-                               if eh > invididual_happiness[voter_indices[1]]]
+        choices_for_voter_1 = [
+            choice
+            for choice, eh in voter_options[0]
+            if eh > invididual_happiness[voter_indices[0]]
+        ]
+        choices_for_voter_2 = [
+            choice
+            for choice, eh in voter_options[1]
+            if eh > invididual_happiness[voter_indices[1]]
+        ]
 
         for coalition_choices in combinations(
             choices_for_voter_1 + choices_for_voter_2, 2
@@ -312,6 +353,5 @@ def CollusionChangeRisk(
             if test_manipulation(voter_indices, coalition_choices):
                 successful_attempts += 1
 
-    collusion_risk = successful_attempts / \
-        total_attempts if total_attempts > 0 else 0.0
+    collusion_risk = successful_attempts / total_attempts if total_attempts > 0 else 0.0
     return collusion_risk
