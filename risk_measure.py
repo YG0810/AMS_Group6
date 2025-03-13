@@ -11,6 +11,7 @@ def FlipRewardRisk(
     _: VotingScheme | None,
     individual_happiness: list[float],
     strategic_options: list,
+    excluded_voter: int | None = None,
 ) -> float:
     """
     Computes the likelihood of strategic voting by evaluating the trade-off between preference changes
@@ -49,6 +50,9 @@ def FlipRewardRisk(
 
     risks = [(None, 0.0)]
     for i, options in enumerate(strategic_options):
+        if excluded_voter and i == excluded_voter:
+            continue
+
         if not options:
             continue
 
@@ -79,6 +83,7 @@ def JointFlipRewardRisk(
     _: VotingScheme | None,
     individual_happiness: list[float],
     strategic_options: list,
+    __: int | None,
 ) -> float:
     """
     Computes the joint likelihood of strategic voting by evaluating all possible
@@ -177,16 +182,20 @@ def inversion_ranking_distance(base_pref: VoterPreference, option_pref: list) ->
     return inversions / max_inversions if max_inversions > 0 else 0.0
 
 
-def probStrategicVoting(
+def NaivePSV(
     _: np.ndarray,
     __: VotingScheme | None,
     voterHappiness: list[float],
     strategicOptions: list[set[tuple[np.chararray, float]]],
+    excluded_voter: int | None = None,
 ):
     n = len(voterHappiness)
     count = 0.0
 
     for i, o in enumerate(strategicOptions):
+        if excluded_voter and i == excluded_voter:
+            n-=1
+            continue
         for o2 in o:
             if o2[1] > voterHappiness[i]:
                 count += 1
@@ -195,11 +204,37 @@ def probStrategicVoting(
     return count / n
 
 
+def HappinessWeightedPSV(
+    _: np.ndarray,
+    __: VotingScheme | None,
+    voterHappiness: list[float],
+    strategicOptions: list[set[tuple[np.chararray, float]]],
+    excluded_voter: int | None = None,
+):
+    strategic_voting_probs  = []
+
+    for i, strategic_options in enumerate(strategicOptions):
+        if excluded_voter and i == excluded_voter:
+            continue
+
+        n = len(strategic_options)
+        count = 0.0
+
+        for _, mod_hapiness in strategic_options:
+            if mod_hapiness > voterHappiness[i]:
+                count += 1
+
+        strategic_voting_probs .append(count / n)
+
+    return np.array(strategic_voting_probs ).mean()
+
+
 def WinnerChangeRisk(
     voter_preference: VoterPreference,
     voting_scheme: VotingScheme,
     individual_happiness: list[float],
     strategic_options: list,
+    excluded_voter: int | None = None,
 ) -> float:
     """
     Calculate the proportion of strategic votes that successfully change the winner.
@@ -223,6 +258,9 @@ def WinnerChangeRisk(
 
     risks = []
     for voter_idx, voter_opts in enumerate(strategic_options):
+        if excluded_voter and voter_idx == excluded_voter:
+            continue
+
         successful = 0
         total = len(voter_opts)
         modified_prefs = voter_preference.copy()
