@@ -1,9 +1,6 @@
 import numpy as np
-from voting_schemes import plurality_voting
 from Types import HappinessMeasure, RiskMeasure, VoterPreference, VotingScheme
 from strategy_generators import StrategyGenerator, defaultStrategyGenerator, combinationStrategyGenerator
-from happiness_measure import KendallTau
-from risk_measure import probStrategicVoting
 
 class ATVA1:
     def __init__(
@@ -128,6 +125,9 @@ if __name__ == '__main__':
     random.seed(0)
     voter_preference = generate_test(num_candidates=3, num_voters=10)
 
-    atva = ATVA1(happiness_measure=KendallTau, risk_measure=probStrategicVoting, exhaustiveSearch=True)
+    from voting_schemes import plurality_voting
+    from happiness_measure import KendallTau
+    from risk_measure import NaivePSV
+    atva = ATVA1(happiness_measure=KendallTau, risk_measure=NaivePSV, exhaustiveSearch=True)
     outcome, individual_happiness, overall_happiness, collusion_options, risk = atva.analyze(voter_preference, plurality_voting)
     # print(collusion_options)
