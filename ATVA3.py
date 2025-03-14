@@ -147,13 +147,9 @@ class ATVA3:
                 mod_happiness = self.happiness_measure(
                     reconstruct_preference[:, i], list(mod_outcome.keys())  # type:ignore
                 )
-                """if (
-                    mod_happiness > individual_happiness[i]
-                ):  # Only consider options that increase happiness
-                    # Save (modified preference, modified happiness)"""
-                
-                # Bloom change: for probStrategicVoting, I need to know how many samples are considered
-                ## Every other risk measure have been modified to ignore the bad options
+                if self.risk_measure.__name__ not in ['WinnerChangeRisk', 'NaivePSV', 'HappinessWeightedPSV'] and (mod_happiness > individual_happiness[i]):
+                    options.add((option, mod_happiness))
+                    continue
                 options.add((option, mod_happiness))
             strategic_options.append(options)
         risk = self.risk_measure(
